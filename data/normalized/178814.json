@@ -1,0 +1,38 @@
+{
+  "design_id": 178814,
+  "design_name": "The Lemonart Kids Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Gemstone Studded",
+  "is_kids": true,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "14kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "colored_gemstone",
+    "details": [
+      {
+        "type": "Simulant Emerald",
+        "count": 4
+      },
+      {
+        "type": "Citrine",
+        "count": 2
+      }
+    ]
+  },
+  "collection_name": null,
+  "occasions": [
+    "everyday",
+    "office"
+  ],
+  "price": 21508.0,
+  "image_url": "https://kinclimg4.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIPN1097S715_YAA14CITRSYEMXXXX_ABCD00-PICS-00004-1024-116017.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-lemonart-kids-stud-earrings~178814.html",
+  "raw_tag_count": 22,
+  "missing_fields": [
+    "collectionName"
+  ],
+  "gender_enrichment_method": "category_default"
+}

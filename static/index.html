@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlueStone — Matching Set Recommender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF7F2;
+    --surface: #FFFFFF;
+    --shaded: #F1E9DC;
+    --ink: #2B241D;
+    --ink-muted: #6E6255;
+    --accent: #A8783C;
+    --accent-light: #EFDFC4;
+    --border: #E4DBC9;
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    padding: 40px 20px 80px;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 34px;
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 8px;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 32px;
+  }
+
+  /* Search / dropdown */
+  .search-wrap {
+    position: relative;
+    max-width: 540px;
+    margin: 0 auto 40px;
+  }
+
+  #search-input {
+    width: 100%;
+    padding: 15px 18px;
+    font-size: 16px;
+    font-family: var(--font-sans);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+  }
+
+  #search-input:focus {
+    border-color: var(--accent);
+  }
+
+  #dropdown-list {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 20;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  #dropdown-list.open { display: block; }
+
+  .dropdown-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: var(--accent-light); }
+  .dropdown-item .cat { color: var(--ink-muted); font-size: 12px; }
+
+  /* Anchor card */
+  .anchor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    max-width: 380px;
+    margin: 0 auto 32px;
+    padding: 28px;
+    text-align: center;
+    display: none;
+    cursor: pointer;
+  }
+
+  .anchor-card.visible { display: block; }
+
+  .anchor-card img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    background: #f2ede4;
+  }
+
+  .anchor-card .name {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+
+  .anchor-card .cat {
+    font-size: 14px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Recommendation zone */
+  .reco-zone {
+    background: var(--shaded);
+    border-radius: 16px;
+    padding: 36px;
+    display: none;
+    transition: opacity 0.25s ease, filter 0.25s ease;
+  }
+
+  .reco-zone.visible { display: block; }
+  .reco-zone.loading { opacity: 0.4; filter: blur(3px); pointer-events: none; }
+
+  .reco-zone h2 {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 18px;
+    text-align: center;
+    color: var(--ink);
+  }
+
+  .reco-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 20px;
+  }
+
+  .reco-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    cursor: pointer;
+    display: block;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  .reco-card:hover {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  .reco-card img {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #f2ede4;
+    pointer-events: none;
+  }
+
+  .reco-card .name {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 2px;
+  }
+
+  .reco-card .cat {
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+
+  .match-score {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  .empty-hint {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 14px;
+    margin-top: 60px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(43, 36, 29, 0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 34px;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover { background: var(--shaded); color: var(--ink); }
+
+  .modal-link {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    text-align: center;
+  }
+
+  .modal-link img {
+    width: 210px;
+    height: 210px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin: 0 auto 16px;
+    display: block;
+    background: #f2ede4;
+  }
+
+  .modal-link .name {
+    font-family: var(--font-serif);
+    font-size: 27px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+
+  .modal-link .name:hover { color: var(--accent); }
+
+  .modal .cat {
+    font-size: 13px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    margin: 0 0 16px;
+  }
+
+  .modal .match-score-big {
+    text-align: center;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 20px;
+  }
+
+  .modal .breakdown-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .breakdown-row:last-child { border-bottom: none; }
+  .breakdown-row .crit-name { color: var(--ink-muted); text-transform: capitalize; }
+  .breakdown-row .crit-val { font-weight: 600; }
+
+  .modal .explanation {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>Matching Jewellery Set Recommender</h1>
+  <p class="subtitle">Search or select a design to see its recommended matching set</p>
+
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="Search by design name or ID..." autocomplete="off">
+    <div id="dropdown-list"></div>
+  </div>
+
+  <div class="anchor-card" id="anchor-card">
+    <img id="anchor-img" src="" alt="">
+    <p class="name" id="anchor-name"></p>
+    <p class="cat" id="anchor-cat"></p>
+  </div>
+
+  <div class="reco-zone" id="reco-zone">
+    <h2>Recommended Matching Set</h2>
+    <div class="reco-grid" id="reco-grid"></div>
+  </div>
+
+  <p class="empty-hint" id="empty-hint">Select a Product above to see its Matching Set</p>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+    <a class="modal-link" id="modal-link" target="_blank" rel="noopener">
+      <img id="modal-img" src="" alt="">
+      <p class="name" id="modal-name"></p>
+    </a>
+    <p class="cat" id="modal-cat"></p>
+    <p class="match-score-big" id="modal-score"></p>
+    <p class="breakdown-title">Match breakdown</p>
+    <div id="modal-breakdown"></div>
+    <p class="explanation" id="modal-explanation"></p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="anchor-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="anchor-modal-close" aria-label="Close">&times;</button>
+    <a class="modal-link" id="anchor-modal-link" target="_blank" rel="noopener">
+      <img id="anchor-modal-img" src="" alt="">
+      <p class="name" id="anchor-modal-name"></p>
+    </a>
+    <p class="cat" id="anchor-modal-cat"></p>
+    <p class="breakdown-title">Attributes used for matching</p>
+    <div id="anchor-modal-attrs"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "";  // same origin
+
+let allProducts = [];
+let currentRecommendations = [];
+let currentAnchor = null;
+
+async function init() {
+  const res = await fetch(`${API_BASE}/products`);
+  allProducts = await res.json();
+}
+
+const searchInput = document.getElementById("search-input");
+const dropdownList = document.getElementById("dropdown-list");
+
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) {
+    dropdownList.classList.remove("open");
+    dropdownList.innerHTML = "";
+    return;
+  }
+  const matches = allProducts.filter(p =>
+    p.design_name.toLowerCase().includes(q) || String(p.design_id).includes(q)
+  ).slice(0, 20);
+
+  if (matches.length === 0) {
+    dropdownList.innerHTML = `<div class="dropdown-item">No matches found</div>`;
+  } else {
+    dropdownList.innerHTML = matches.map(p => `
+      <div class="dropdown-item" data-id="${p.design_id}">
+        ${p.design_name} <span class="cat">— ${p.category_type} · #${p.design_id}</span>
+      </div>
+    `).join("");
+  }
+  dropdownList.classList.add("open");
+});
+
+dropdownList.addEventListener("click", (e) => {
+  const item = e.target.closest(".dropdown-item");
+  if (!item || !item.dataset.id) return;
+  const designId = parseInt(item.dataset.id);
+  const product = allProducts.find(p => p.design_id === designId);
+  searchInput.value = product ? product.design_name : designId;
+  dropdownList.classList.remove("open");
+  loadRecommendations(designId);
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".search-wrap")) {
+    dropdownList.classList.remove("open");
+  }
+});
+
+const anchorCard = document.getElementById("anchor-card");
+const recoZone = document.getElementById("reco-zone");
+const recoGrid = document.getElementById("reco-grid");
+const emptyHint = document.getElementById("empty-hint");
+
+async function loadRecommendations(designId) {
+  emptyHint.style.display = "none";
+
+  if (recoZone.classList.contains("visible")) {
+    recoZone.classList.add("loading");
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/recommend?design_id=${designId}&top_k=5`);
+    if (!res.ok) throw new Error("Request failed");
+    const data = await res.json();
+
+    document.getElementById("anchor-img").src = data.anchor.image_url || "";
+    document.getElementById("anchor-name").textContent = data.anchor.design_name;
+    document.getElementById("anchor-cat").textContent = data.anchor.category_type;
+    anchorCard.classList.add("visible");
+    currentAnchor = data.anchor;
+
+    currentRecommendations = data.recommendations;
+
+    recoGrid.innerHTML = currentRecommendations.map((item, idx) => {
+      const pct = Math.round(item.match_score * 100);
+      return `
+        <div class="reco-card" data-idx="${idx}">
+          <img src="${item.image_url || ''}" alt="${item.design_name}">
+          <p class="name">${item.design_name}</p>
+          <p class="cat">${item.category_type}</p>
+          <p class="match-score">${pct}% Match</p>
+        </div>
+      `;
+    }).join("");
+
+    recoZone.classList.add("visible");
+    recoZone.classList.remove("loading");
+  } catch (err) {
+    recoZone.classList.remove("loading");
+    recoGrid.innerHTML = `<p style="text-align:center; color: var(--ink-muted);">Could not load recommendations. Please try again.</p>`;
+  }
+}
+
+// ---- Modal ----
+const modalOverlay = document.getElementById("modal-overlay");
+const modalClose = document.getElementById("modal-close");
+
+recoGrid.addEventListener("click", (e) => {
+  const card = e.target.closest(".reco-card");
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx);
+  openModal(currentRecommendations[idx]);
+});
+
+function openModal(item) {
+  const pct = Math.round(item.match_score * 100);
+
+  document.getElementById("modal-img").src = item.image_url || "";
+  document.getElementById("modal-name").textContent = item.design_name;
+  document.getElementById("modal-cat").textContent = item.category_type;
+  document.getElementById("modal-score").textContent = `${pct}% Match`;
+  document.getElementById("modal-link").href = item.product_page_url;
+  document.getElementById("modal-explanation").textContent = item.explanation;
+
+  const sortedBreakdown = Object.entries(item.score_breakdown)
+    .filter(([k, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const breakdownHtml = sortedBreakdown.length > 0
+    ? sortedBreakdown.map(([k, v]) => `
+        <div class="breakdown-row">
+          <span class="crit-name">${k.replace(/_/g, " ")}</span>
+          <span class="crit-val">${Math.round(v * 100)}%</span>
+        </div>
+      `).join("")
+    : `<p style="font-size: 13px; color: var(--ink-muted); font-style: italic;">No individual criteria scored above 0%.</p>`;
+  document.getElementById("modal-breakdown").innerHTML = breakdownHtml;
+
+  modalOverlay.classList.add("open");
+}
+
+function closeModal() {
+  modalOverlay.classList.remove("open");
+}
+
+modalClose.addEventListener("click", closeModal);
+modalOverlay.addEventListener("click", (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (modalOverlay.classList.contains("open")) closeModal();
+    if (anchorModalOverlay.classList.contains("open")) anchorModalOverlay.classList.remove("open");
+  }
+});
+
+anchorCard.addEventListener("click", () => {
+  if (currentAnchor) openAnchorModal(currentAnchor);
+});
+
+const anchorModalOverlay = document.getElementById("anchor-modal-overlay");
+const anchorModalClose = document.getElementById("anchor-modal-close");
+
+function openAnchorModal(anchor) {
+  document.getElementById("anchor-modal-img").src = anchor.image_url || "";
+  document.getElementById("anchor-modal-name").textContent = anchor.design_name;
+  document.getElementById("anchor-modal-cat").textContent = anchor.category_type;
+  document.getElementById("anchor-modal-link").href = anchor.product_page_url;
+
+  const attrs = [
+    ["Gender", anchor.gender],
+    ["Adult / Kids", anchor.is_kids ? "Kids" : "Adult"],
+    ["Metal type", anchor.metal_type],
+    ["Metal color", anchor.metal_color],
+    ["Gemstone", anchor.gemstone_kind ? anchor.gemstone_kind.replace(/_/g, " ") : null],
+    ["Collection", anchor.collection_name],
+    ["Occasions", anchor.occasions && anchor.occasions.length ? anchor.occasions.join(", ") : null],
+    ["Price", anchor.price ? `₹${Math.round(anchor.price).toLocaleString("en-IN")}` : null],
+  ].filter(([label, value]) => value !== null && value !== undefined && value !== "");
+
+  document.getElementById("anchor-modal-attrs").innerHTML = attrs.map(([label, value]) => `
+    <div class="breakdown-row">
+      <span class="crit-name">${label}</span>
+      <span class="crit-val" style="text-transform: capitalize;">${value}</span>
+    </div>
+  `).join("");
+
+  anchorModalOverlay.classList.add("open");
+}
+
+anchorModalClose.addEventListener("click", () => anchorModalOverlay.classList.remove("open"));
+anchorModalOverlay.addEventListener("click", (e) => {
+  if (e.target === anchorModalOverlay) anchorModalOverlay.classList.remove("open");
+});
+
+init();
+</script>
+
+</body>
+</html>

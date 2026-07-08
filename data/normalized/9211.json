@@ -1,0 +1,31 @@
+{
+  "design_id": 9211,
+  "design_name": "The Vedika Drop Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Gemstone Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "colored_gemstone",
+    "details": [
+      {
+        "type": "White Pearl HD",
+        "count": 2
+      }
+    ]
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 42766.0,
+  "image_url": "https://kinclimg6.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISS0203D26_YAA18PRWHXXXXXXXX_ABCD00-PICS-00004-1024-17292.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-vedika-drop-earrings~9211.html",
+  "raw_tag_count": 19,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

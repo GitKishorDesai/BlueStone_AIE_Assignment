@@ -1,0 +1,25 @@
+{
+  "design_id": 165246,
+  "design_name": "The Lanternpane Necklet Necklace",
+  "category_type": "Necklaces",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 186455.0,
+  "image_url": "https://kinclimg1.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISB1098N10_YAA22XXXXXXXXXXXX_ABCD00-PICS-00003-1024-122302.png",
+  "product_page_url": "https://www.bluestone.com/necklaces/the-lanternpane-necklet-necklace~165246.html",
+  "raw_tag_count": 9,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "design_id": 84440,
+  "design_name": "The Paw Kids Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Plain Gold",
+  "is_kids": true,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "14kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 10150.0,
+  "image_url": "https://kinclimg4.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIPR0790S18_YAA14XXXXXXXXXXXX_ABCD00-PICS-00004-1024-57546.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-paw-kids-stud-earrings~84440.html",
+  "raw_tag_count": 15,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ],
+  "gender_enrichment_method": "category_default"
+}

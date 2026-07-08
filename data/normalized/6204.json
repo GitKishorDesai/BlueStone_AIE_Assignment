@@ -1,0 +1,31 @@
+{
+  "design_id": 6204,
+  "design_name": "The Careen Axis Bangle",
+  "category_type": "Bangles",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [
+    "festive",
+    "akshaya tritiya",
+    "everyday",
+    "workwear",
+    "party",
+    "gift"
+  ],
+  "price": 255919.0,
+  "image_url": "https://kinclimg6.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIMG0068O11_YAA22XXXXXXXXXXXX_ABCD00-PICS-00002-1024-7053.png",
+  "product_page_url": "https://www.bluestone.com/bangles/the-careen-axis-bangle~6204.html",
+  "raw_tag_count": 17,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

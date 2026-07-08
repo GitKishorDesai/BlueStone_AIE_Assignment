@@ -1,0 +1,31 @@
+{
+  "design_id": 165736,
+  "design_name": "The Solbee Stackable Ring",
+  "category_type": "Rings",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [
+    "akshaya tritiya",
+    "everyday",
+    "office",
+    "workwear",
+    "vacation",
+    "weekend"
+  ],
+  "price": 82853.0,
+  "image_url": "https://kinclimg7.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISY1098R46_YAA22XXXXXXXXXXXX_ABCD00-PICS-00001-1024-112927.png",
+  "product_page_url": "https://www.bluestone.com/rings/the-solbee-stackable-ring~165736.html",
+  "raw_tag_count": 27,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

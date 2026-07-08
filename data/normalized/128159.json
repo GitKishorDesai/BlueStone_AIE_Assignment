@@ -1,0 +1,25 @@
+{
+  "design_id": 128159,
+  "design_name": "The Sylvoria Hoop Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": "Wired Collection",
+  "occasions": [
+    "everyday",
+    "office"
+  ],
+  "price": 139170.0,
+  "image_url": "https://kinclimg2.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISW1030H44_YAA22XXXXXXXXXXXX_ABCD00-PICS-00004-1024-88956.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-sylvoria-hoop-earrings~128159.html",
+  "raw_tag_count": 20,
+  "missing_fields": []
+}

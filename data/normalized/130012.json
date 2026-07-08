@@ -1,0 +1,30 @@
+{
+  "design_id": 130012,
+  "design_name": "The Sorella Band Ring",
+  "category_type": "Rings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "White Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "White",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.284,
+    "count": 48
+  },
+  "collection_name": null,
+  "occasions": [
+    "akshaya tritiya",
+    "weekend"
+  ],
+  "price": 141537.0,
+  "image_url": "https://kinclimg3.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIPO0994R22_WAA18DIG6SSYPXXXX_ABCD00-PICS-00001-1024-90732.png",
+  "product_page_url": "https://www.bluestone.com/rings/the-sorella-band-ring~130012.html",
+  "raw_tag_count": 23,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

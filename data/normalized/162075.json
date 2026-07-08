@@ -1,0 +1,27 @@
+{
+  "design_id": 162075,
+  "design_name": "The Zyrah Chain Bracelet For Him",
+  "category_type": "Bracelets",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "men",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [
+    "everyday",
+    "office"
+  ],
+  "price": 98152.0,
+  "image_url": "https://kinclimg5.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BICM1132V09_YAA22XXXXXXXXXXXX_ABCD00-PICS-00000-1024-102877.png",
+  "product_page_url": "https://www.bluestone.com/bracelets/the-zyrah-chain-bracelet-for-him~162075.html",
+  "raw_tag_count": 9,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

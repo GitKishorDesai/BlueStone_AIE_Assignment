@@ -1,0 +1,26 @@
+{
+  "design_id": 162441,
+  "design_name": "The Novella Pendant",
+  "category_type": "Pendants",
+  "item_category_name": "Plain Gold",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "22kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [
+    "office"
+  ],
+  "price": 33774.0,
+  "image_url": "https://kinclimg1.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIHM0982P06_YAA22XXXXXXXXXXXX_ABCD00-PICS-00004-1024-109902.png",
+  "product_page_url": "https://www.bluestone.com/pendants/the-novella-pendant~162441.html",
+  "raw_tag_count": 10,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

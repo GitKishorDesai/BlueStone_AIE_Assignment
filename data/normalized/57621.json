@@ -1,0 +1,29 @@
+{
+  "design_id": 57621,
+  "design_name": "The Iola Pave Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "14kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.09,
+    "count": 18
+  },
+  "collection_name": null,
+  "occasions": [
+    "everyday"
+  ],
+  "price": 30810.0,
+  "image_url": "https://kinclimg9.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIID0545S02_YAA14DIG6XXXXXXXX_ABCD00-PICS-00004-1024-73484.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-iola-pave-stud-earrings~57621.html",
+  "raw_tag_count": 21,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

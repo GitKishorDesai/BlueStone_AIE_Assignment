@@ -1,0 +1,27 @@
+{
+  "design_id": 49146,
+  "design_name": "The Cadi Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Rose Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "White",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.12,
+    "count": 26
+  },
+  "collection_name": "Carnation Collection",
+  "occasions": [],
+  "price": 131304.0,
+  "image_url": "https://kinclimg1.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIRK0328S17_RAA18DIG6XXXXXXXX_ABCD00-PICS-00004-1024-40640.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-cadi-stud-earrings~49146.html",
+  "raw_tag_count": 14,
+  "missing_fields": [
+    "occasions"
+  ]
+}

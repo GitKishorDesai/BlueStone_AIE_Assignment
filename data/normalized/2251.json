@@ -1,0 +1,32 @@
+{
+  "design_id": 2251,
+  "design_name": "The Poppy Nose Pin",
+  "category_type": "Nose Pins",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.11,
+    "count": 1
+  },
+  "collection_name": null,
+  "occasions": [
+    "akshaya tritiya",
+    "everyday",
+    "workwear",
+    "special occasion"
+  ],
+  "price": 27377.0,
+  "image_url": "https://kinclimg8.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISM0021X09_YAA18DIG6XXXXXXXX_ABCD00-PICS-00004-1024-13096.png",
+  "product_page_url": "https://www.bluestone.com/nose+pins/the-poppy-nose-pin~2251.html",
+  "raw_tag_count": 13,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

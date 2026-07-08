@@ -1,0 +1,28 @@
+{
+  "design_id": 2506,
+  "design_name": "The Pushpanjali Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.064,
+    "count": 2
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 63427.0,
+  "image_url": "https://kinclimg2.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIVS0012S01_YAA18NAV2DIG6RUBY_ABCD00-PICS-00004-1024-78564.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-pushpanjali-earrings~2506.html",
+  "raw_tag_count": 21,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

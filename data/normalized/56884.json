@@ -1,0 +1,27 @@
+{
+  "design_id": 56884,
+  "design_name": "The Eloadia Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Platinum Diamond Jewellery",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Platinum",
+  "metal_type": "Platinum",
+  "gold_purity": null,
+  "metal_color": "Platinum",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIGH",
+    "carat": 0.094,
+    "count": 20
+  },
+  "collection_name": "Pure Love Collection",
+  "occasions": [
+    "gift"
+  ],
+  "price": 80066.0,
+  "image_url": "https://kinclimg3.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BVPP0588S06_PAA95DIG4XXXXXXXX_ABCD00-PICS-00004-1024-43297.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-eloadia-stud-earrings~56884.html",
+  "raw_tag_count": 14,
+  "missing_fields": []
+}

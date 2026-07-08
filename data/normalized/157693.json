@@ -1,0 +1,28 @@
+{
+  "design_id": 157693,
+  "design_name": "The Vowshine Mangalsutra Necklace",
+  "category_type": "Mangalsutra Chains",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.206,
+    "count": 7
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 96430.0,
+  "image_url": "https://kinclimg3.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIPP1011C12_YAA18DIG6SYSBXXXX_ABCD00-PICS-00004-1024-114877.png",
+  "product_page_url": "https://www.bluestone.com/mangalsutra+chains/the-vowshine-mangalsutra-necklace~157693.html",
+  "raw_tag_count": 3,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

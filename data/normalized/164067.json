@@ -1,0 +1,33 @@
+{
+  "design_id": 164067,
+  "design_name": "The Dianay Ring",
+  "category_type": "Rings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.276,
+    "count": 50
+  },
+  "collection_name": null,
+  "occasions": [
+    "everyday",
+    "office",
+    "workwear",
+    "vacation",
+    "weekend"
+  ],
+  "price": 87163.0,
+  "image_url": "https://kinclimg2.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIMA1106R27_YAA18DIG6SYBSXXXX_ABCD00-PICS-00001-1024-106636.png",
+  "product_page_url": "https://www.bluestone.com/rings/the-dianay-ring~164067.html",
+  "raw_tag_count": 27,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

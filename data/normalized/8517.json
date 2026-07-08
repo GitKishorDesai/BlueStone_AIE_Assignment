@@ -1,0 +1,29 @@
+{
+  "design_id": 8517,
+  "design_name": "The Delightful Ring",
+  "category_type": "PreSet Solitaire Rings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "White Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "White",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.12,
+    "count": 15
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 95324.0,
+  "image_url": "https://kinclimg4.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BVUN0180R31_WAA18DIG6SOG60025_ABCD00-PICS-00001-1024-66186.png",
+  "product_page_url": "https://www.bluestone.com/preset+solitaire+rings/the-delightful-ring~8517.html",
+  "raw_tag_count": 0,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ],
+  "gender_enrichment_method": "category_default"
+}

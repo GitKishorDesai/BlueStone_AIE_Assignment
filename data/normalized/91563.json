@@ -1,0 +1,28 @@
+{
+  "design_id": 91563,
+  "design_name": "The Emersyn Band For Her",
+  "category_type": "PreSet Solitaire Rings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.077,
+    "count": 20
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 83147.0,
+  "image_url": "https://kinclimg9.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIPO0845R02_YAA18DIG6SOG60025_ABCD00-PICS-00001-1024-65000.png",
+  "product_page_url": "https://www.bluestone.com/preset+solitaire+rings/the-emersyn-band-for-her~91563.html",
+  "raw_tag_count": 0,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

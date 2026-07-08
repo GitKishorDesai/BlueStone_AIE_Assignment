@@ -1,0 +1,30 @@
+{
+  "design_id": 113285,
+  "design_name": "The Emerey Stud Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIIJ",
+    "carat": 0.48,
+    "count": 58
+  },
+  "collection_name": null,
+  "occasions": [
+    "everyday",
+    "office"
+  ],
+  "price": 106395.0,
+  "image_url": "https://kinclimg2.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISL0969S24_YAA18DIG6XXXXXXXX_ABCD00-PICS-00004-1024-82470.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-emerey-stud-earrings~113285.html",
+  "raw_tag_count": 23,
+  "missing_fields": [
+    "collectionName"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "design_id": 96653,
+  "design_name": "The Brooks J Hoop Dangle Earrings",
+  "category_type": "Earrings",
+  "item_category_name": "Polki Studded",
+  "is_kids": false,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "18kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "diamond",
+    "stone_type": "SIGH",
+    "carat": 0.88,
+    "count": 88
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 209525.0,
+  "image_url": "https://kinclimg7.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BISR0880H49_YAA18DIG4XXXXXXXX_ABCD00-PICS-00004-1024-71655.png",
+  "product_page_url": "https://www.bluestone.com/earrings/the-brooks-j-hoop-dangle-earrings~96653.html",
+  "raw_tag_count": 20,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ]
+}

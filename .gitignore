@@ -1,0 +1,8 @@
+venv/
+venv_bluestone_assignment/
+__pycache__/
+*.pyc
+.env
+data/raw/
+data/images/
+data/logs/

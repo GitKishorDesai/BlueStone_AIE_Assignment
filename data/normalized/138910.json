@@ -1,0 +1,26 @@
+{
+  "design_id": 138910,
+  "design_name": "The Hunnybee Kids Bangle",
+  "category_type": "Kids Bangles",
+  "item_category_name": "Plain Gold",
+  "is_kids": true,
+  "gender": "women",
+  "metal": "Gold",
+  "metal_type": "Gold",
+  "gold_purity": "14kt",
+  "metal_color": "Yellow",
+  "gemstone_info": {
+    "kind": "plain_gold"
+  },
+  "collection_name": null,
+  "occasions": [],
+  "price": 38697.0,
+  "image_url": "https://kinclimg8.bluestone.com/f_jpg,c_scale,w_828,q_80,b_rgb:f0f0f0/giproduct/BIHM0990B166_YAA14XXXXXXXXXXXX_ABCD00-PICS-00002-1024-97063.png",
+  "product_page_url": "https://www.bluestone.com/kids+bangles/the-hunnybee-kids-bangle~138910.html",
+  "raw_tag_count": 2,
+  "missing_fields": [
+    "collectionName",
+    "occasions"
+  ],
+  "gender_enrichment_method": "category_default"
+}
