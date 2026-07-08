@@ -1,20 +1,18 @@
 """
 Core matching logic for the jewellery matching-set recommender.
 
-Given an anchor design_id, this module:
-  1. Retrieves candidates from OTHER categories (category compatibility)
-  2. Applies hard filters: gender mismatch, adult-vs-kids mismatch
-  3. Scores surviving candidates on weighted soft criteria
-  4. Ranks and returns Top-K with a plain-English explanation each
-
-Weights (soft criteria) -- manually reasoned, NOT learned from data
-(no ground truth / co-purchase data available). Documented explicitly
-so this is a stated assumption, not a hidden constant.
+Retrieval now goes through Chroma: the anchor's embedding is used to query
+the vector collection for the top-N most visually similar candidates,
+with is_kids pre-filtered at the Chroma query level (cheap, exact match).
+Category-canonicalization and gender-compatibility hard filters, plus all
+soft-criteria scoring, still run in Python on that shortlist -- this keeps
+the nuanced logic (unisex-as-wildcard, ring/solitaire-ring grouping)
+explicit and readable rather than baked into a query filter language.
 """
 
 import numpy as np
-import config
 
+import config
 from data_loader import load_all, get_product_by_id
 
 WEIGHTS = {
@@ -26,13 +24,26 @@ WEIGHTS = {
     "occasion_match": 0.05,
 }
 
+# How many visually-similar candidates to retrieve from Chroma before
+# applying remaining hard filters + scoring. Larger than final top_k
+# since some retrieved candidates will still be filtered out (same
+# category, gender mismatch) after retrieval.
+RETRIEVAL_POOL_SIZE = 40
+
 
 # ---------------------------------------------------------------------
-# Hard filters
+# Hard filters (applied to the Chroma-retrieved shortlist)
 # ---------------------------------------------------------------------
 
 def is_same_category(anchor, candidate):
     return config.canonicalize_category(anchor["category_type"]) == config.canonicalize_category(candidate["category_type"])
+
+
+def is_same_zone_group(anchor, candidate):
+    anchor_group = config.get_zone_group(anchor["category_type"])
+    if anchor_group is None:
+        return False
+    return candidate["category_type"] in anchor_group
 
 
 def gender_compatible(anchor, candidate):
@@ -43,32 +54,19 @@ def gender_compatible(anchor, candidate):
     return a == c
 
 
-def kids_compatible(anchor, candidate):
-    """Kids items only pair with kids items, adult items only with adult items."""
-    return anchor["is_kids"] == candidate["is_kids"]
-
-
-def passes_hard_filters(anchor, candidate, include_same_zone=False):
+def passes_remaining_filters(anchor, candidate, include_same_zone=False):
+    """
+    is_kids is already filtered at the Chroma query level -- this only
+    re-checks category/zone/gender, which aren't expressed as simple
+    Chroma metadata equality filters.
+    """
     if is_same_category(anchor, candidate):
         return False
     if not include_same_zone and is_same_zone_group(anchor, candidate):
         return False
     if not gender_compatible(anchor, candidate):
         return False
-    if not kids_compatible(anchor, candidate):
-        return False
     return True
-
-def is_same_zone_group(anchor, candidate):
-    """
-    Returns True if anchor and candidate belong to the same zone group
-    (e.g. Necklace/Pendant/Mangalsutra all occupy the 'neck' slot).
-    Categories not in any group return False (never zone-excluded).
-    """
-    anchor_group = config.get_zone_group(anchor["category_type"])
-    if anchor_group is None:
-        return False
-    return candidate["category_type"] in anchor_group
 
 
 # ---------------------------------------------------------------------
@@ -76,9 +74,8 @@ def is_same_zone_group(anchor, candidate):
 # ---------------------------------------------------------------------
 
 def score_visual_similarity(anchor, candidate):
-    """Cosine similarity between pre-normalized CLIP embeddings (dot product)."""
     sim = float(np.dot(anchor["embedding"], candidate["embedding"]))
-    return max(0.0, min(1.0, sim))  # clip to [0,1] defensively
+    return max(0.0, min(1.0, sim))
 
 
 def score_metal_match(anchor, candidate):
@@ -99,15 +96,14 @@ def score_gemstone_match(anchor, candidate):
 def score_price_closeness(anchor, candidate):
     a_price, c_price = anchor.get("price"), candidate.get("price")
     if not a_price or not c_price:
-        return 0.0  # can't compare, contribute nothing (not a penalty elsewhere)
-    ratio = min(a_price, c_price) / max(a_price, c_price)
-    return ratio  # 1.0 = identical price, approaches 0 as prices diverge
+        return 0.0
+    return min(a_price, c_price) / max(a_price, c_price)
 
 
 def score_collection_match(anchor, candidate):
     a_col, c_col = anchor.get("collection_name"), candidate.get("collection_name")
     if not a_col or not c_col:
-        return 0.0  # missing on either side -> no signal, not a penalty
+        return 0.0
     return 1.0 if a_col == c_col else 0.0
 
 
@@ -116,7 +112,7 @@ def score_occasion_match(anchor, candidate):
     if not a_occ or not c_occ:
         return 0.0
     overlap = a_occ & c_occ
-    return len(overlap) / len(a_occ | c_occ)  # Jaccard-style overlap ratio
+    return len(overlap) / len(a_occ | c_occ)
 
 
 SCORERS = {
@@ -130,7 +126,6 @@ SCORERS = {
 
 
 def compute_match_score(anchor, candidate):
-    """Returns (final_score, breakdown_dict) where breakdown has each criterion's raw [0,1] score."""
     breakdown = {name: scorer(anchor, candidate) for name, scorer in SCORERS.items()}
     final_score = sum(breakdown[name] * WEIGHTS[name] for name in WEIGHTS)
     return final_score, breakdown
@@ -174,15 +169,29 @@ def generate_explanation(anchor, candidate, breakdown):
 
 
 # ---------------------------------------------------------------------
-# Main entry point
+# Main entry point -- retrieval now via Chroma, scoring still in Python
 # ---------------------------------------------------------------------
 
-def get_matching_set(anchor_design_id, products, top_k=5, max_per_category=1, include_same_zone=False):
+def get_matching_set(anchor_design_id, products, collection=None, top_k=5, max_per_category=1, include_same_zone=False):
     anchor = get_product_by_id(products, anchor_design_id)
     if anchor is None:
         raise ValueError(f"design_id {anchor_design_id} not found in loaded products")
 
-    candidates = [p for p in products if passes_hard_filters(anchor, p, include_same_zone=include_same_zone)]
+    if collection is not None:
+        # Chroma-backed retrieval: pre-filter on is_kids (cheap, exact),
+        # retrieve top-N visually similar candidates by embedding distance.
+        results = collection.query(
+            query_embeddings=[anchor["embedding"].tolist()],
+            n_results=min(RETRIEVAL_POOL_SIZE, len(products)),
+            where={"is_kids": anchor["is_kids"]},
+        )
+        retrieved_ids = [int(id_str) for id_str in results["ids"][0]]
+        candidate_pool = [get_product_by_id(products, did) for did in retrieved_ids if did != anchor_design_id]
+    else:
+        # Fallback: no collection provided, use full product list (e.g. for quick scripts/tests)
+        candidate_pool = [p for p in products if p["design_id"] != anchor_design_id]
+
+    candidates = [p for p in candidate_pool if passes_remaining_filters(anchor, p, include_same_zone)]
 
     scored = []
     for candidate in candidates:
@@ -201,8 +210,6 @@ def get_matching_set(anchor_design_id, products, top_k=5, max_per_category=1, in
 
     scored.sort(key=lambda x: x["match_score"], reverse=True)
 
-    # Enforce category diversity: a real "set" pairs one piece per category,
-    # not the single best-scoring category flooding the Top-K.
     final_selection = []
     category_counts = {}
 
@@ -223,30 +230,19 @@ if __name__ == "__main__":
     import random
 
     parser = argparse.ArgumentParser(description="Test the matching-set recommender for a given (or random) design ID.")
-    parser.add_argument(
-        "--design-id",
-        type=int,
-        default=None,
-        help="Specific design_id to test. If omitted, a random product is picked.",
-    )
-    parser.add_argument("--top-k", type=int, default=5, help="Number of recommendations to return (default: 5)")
-    parser.add_argument(
-        "--include-same-zone",
-        action="store_true",
-        help="Allow same-zone-group categories (e.g. necklace+pendant) in results",
-    )
+    parser.add_argument("--design-id", type=int, default=None)
+    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--include-same-zone", action="store_true")
     args = parser.parse_args()
 
-    products, index, id_order = load_all()
+    products, collection, id_order = load_all()
 
-    if args.design_id is not None:
-        test_id = args.design_id
-    else:
-        test_id = random.choice(products)["design_id"]
+    test_id = args.design_id if args.design_id is not None else random.choice(products)["design_id"]
+    if args.design_id is None:
         print(f"[matching] No --design-id given, picked random anchor: {test_id}")
 
     anchor, top_k = get_matching_set(
-        test_id, products, top_k=args.top_k, include_same_zone=args.include_same_zone
+        test_id, products, collection=collection, top_k=args.top_k, include_same_zone=args.include_same_zone
     )
 
     print(f"\nAnchor: {anchor['design_name']} (designId={anchor['design_id']}, {anchor['category_type']})\n")

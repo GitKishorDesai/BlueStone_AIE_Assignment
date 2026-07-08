@@ -1,6 +1,7 @@
 """
-Loads all normalized records + their embeddings into memory, and builds a
-FAISS flat index over the embeddings for similarity lookup.
+Loads all normalized records + their embeddings into memory, and connects
+to the persistent Chroma vector collection (built by build_vector_index.py)
+for similarity-based retrieval.
 
 Single entry point: load_all(). Downstream scripts (matching logic, UI)
 call this once and work off the returned in-memory structure -- no one
@@ -11,22 +12,22 @@ import json
 import os
 
 import numpy as np
-import faiss
+import chromadb
 
 import config
 
 NORMALIZED_DIR = os.path.join(config.DATA_DIR, "normalized")
 EMBEDDINGS_DIR = os.path.join(config.DATA_DIR, "embeddings")
+CHROMA_DIR = os.path.join(config.DATA_DIR, "chroma_db")
+COLLECTION_NAME = "jewellery_products"
 
 
 def load_all():
     """
     Returns:
         products: list of dicts, each = normalized fields + 'embedding' (np.array)
-        index: a FAISS IndexFlatIP (inner product = cosine similarity, since
-               embeddings are pre-normalized in generate_embeddings.py)
-        id_order: list of design_ids in the same order as vectors in the index,
-                  so index position -> design_id lookup is possible
+        collection: the Chroma collection object, ready for similarity queries
+        id_order: kept for backward compatibility -- list of all design_ids loaded
     """
     products = []
     skipped_no_embedding = []
@@ -56,16 +57,14 @@ def load_all():
     if not products:
         raise RuntimeError("No products with embeddings found -- run the pipeline scripts first.")
 
-    embedding_dim = products[0]["embedding"].shape[0]
-    index = faiss.IndexFlatIP(embedding_dim)  # inner product == cosine similarity for normalized vectors
-
-    vectors = np.stack([p["embedding"] for p in products]).astype("float32")
-    index.add(vectors)
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    collection = client.get_collection(name=COLLECTION_NAME)
 
     id_order = [p["design_id"] for p in products]
 
-    print(f"[data_loader] Loaded {len(products)} product(s) into memory and FAISS index")
-    return products, index, id_order
+    print(f"[data_loader] Loaded {len(products)} product(s) into memory; "
+          f"connected to Chroma collection with {collection.count()} vector(s)")
+    return products, collection, id_order
 
 
 def get_product_by_id(products, design_id):
@@ -77,7 +76,6 @@ def get_product_by_id(products, design_id):
 
 
 if __name__ == "__main__":
-    # Quick smoke test when run directly
-    products, index, id_order = load_all()
-    print(f"Index contains {index.ntotal} vectors")
+    products, collection, id_order = load_all()
+    print(f"Collection contains {collection.count()} vectors")
     print(f"Sample product keys: {list(products[0].keys())}")

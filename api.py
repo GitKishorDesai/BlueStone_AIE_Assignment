@@ -52,7 +52,7 @@ def recommend(
         raise HTTPException(status_code=404, detail=f"design_id {design_id} not found")
 
     anchor_record, recommendations = get_matching_set(
-        design_id, PRODUCTS, top_k=top_k, include_same_zone=include_same_zone
+        design_id, PRODUCTS, collection=INDEX, top_k=top_k, include_same_zone=include_same_zone
     )
 
     return {
