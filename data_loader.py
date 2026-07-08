@@ -67,12 +67,9 @@ def load_all():
     return products, collection, id_order
 
 
-def get_product_by_id(products, design_id):
-    """Convenience lookup -- linear scan, fine at this scale."""
-    for p in products:
-        if p["design_id"] == design_id:
-            return p
-    return None
+def build_id_index(products):
+    """Returns a dict keyed by design_id for O(1) lookup."""
+    return {p["design_id"]: p for p in products}
 
 
 if __name__ == "__main__":

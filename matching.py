@@ -13,7 +13,7 @@ explicit and readable rather than baked into a query filter language.
 import numpy as np
 
 import config
-from data_loader import load_all, get_product_by_id
+from data_loader import load_all, build_id_index
 
 WEIGHTS = {
     "visual_similarity": 0.30,
@@ -172,24 +172,18 @@ def generate_explanation(anchor, candidate, breakdown):
 # Main entry point -- retrieval now via Chroma, scoring still in Python
 # ---------------------------------------------------------------------
 
-def get_matching_set(anchor_design_id, products, collection=None, top_k=5, max_per_category=1, include_same_zone=False):
-    anchor = get_product_by_id(products, anchor_design_id)
+def get_matching_set(anchor_design_id, products_by_id, collection, top_k=5, max_per_category=1, include_same_zone=False):
+    anchor = products_by_id.get(anchor_design_id)
     if anchor is None:
         raise ValueError(f"design_id {anchor_design_id} not found in loaded products")
 
-    if collection is not None:
-        # Chroma-backed retrieval: pre-filter on is_kids (cheap, exact),
-        # retrieve top-N visually similar candidates by embedding distance.
-        results = collection.query(
-            query_embeddings=[anchor["embedding"].tolist()],
-            n_results=min(RETRIEVAL_POOL_SIZE, len(products)),
-            where={"is_kids": anchor["is_kids"]},
-        )
-        retrieved_ids = [int(id_str) for id_str in results["ids"][0]]
-        candidate_pool = [get_product_by_id(products, did) for did in retrieved_ids if did != anchor_design_id]
-    else:
-        # Fallback: no collection provided, use full product list (e.g. for quick scripts/tests)
-        candidate_pool = [p for p in products if p["design_id"] != anchor_design_id]
+    results = collection.query(
+        query_embeddings=[anchor["embedding"].tolist()],
+        n_results=min(RETRIEVAL_POOL_SIZE, len(products_by_id)),
+        where={"is_kids": anchor["is_kids"]},
+    )
+    retrieved_ids = [int(id_str) for id_str in results["ids"][0]]
+    candidate_pool = [products_by_id[did] for did in retrieved_ids if did != anchor_design_id and did in products_by_id]
 
     candidates = [p for p in candidate_pool if passes_remaining_filters(anchor, p, include_same_zone)]
 
@@ -236,13 +230,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     products, collection, id_order = load_all()
+    products_by_id = build_id_index(products)
 
     test_id = args.design_id if args.design_id is not None else random.choice(products)["design_id"]
     if args.design_id is None:
         print(f"[matching] No --design-id given, picked random anchor: {test_id}")
 
     anchor, top_k = get_matching_set(
-        test_id, products, collection=collection, top_k=args.top_k, include_same_zone=args.include_same_zone
+        test_id, products_by_id, collection, top_k=args.top_k, include_same_zone=args.include_same_zone
     )
 
     print(f"\nAnchor: {anchor['design_name']} (designId={anchor['design_id']}, {anchor['category_type']})\n")

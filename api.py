@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from data_loader import load_all, get_product_by_id
+from data_loader import load_all, build_id_index
 from matching import get_matching_set
 
 app = FastAPI(title="BlueStone Matching Set API")
@@ -27,7 +27,7 @@ app.add_middleware(
 
 # Loaded once at startup -- not per-request
 PRODUCTS, INDEX, ID_ORDER = load_all()
-
+PRODUCTS_BY_ID = build_id_index(PRODUCTS)
 
 @app.get("/products")
 def list_products():
@@ -37,7 +37,7 @@ def list_products():
             "design_name": p["design_name"],
             "category_type": p["category_type"],
         }
-        for p in PRODUCTS
+        for p in PRODUCTS_BY_ID.values()
     ]
 
 
@@ -47,12 +47,12 @@ def recommend(
     top_k: int = Query(5, ge=1, le=20),
     include_same_zone: bool = Query(False),
 ):
-    anchor = get_product_by_id(PRODUCTS, design_id)
+    anchor = PRODUCTS_BY_ID.get(design_id)
     if anchor is None:
         raise HTTPException(status_code=404, detail=f"design_id {design_id} not found")
 
     anchor_record, recommendations = get_matching_set(
-        design_id, PRODUCTS, collection=INDEX, top_k=top_k, include_same_zone=include_same_zone
+        design_id, PRODUCTS_BY_ID, INDEX, top_k=top_k, include_same_zone=include_same_zone
     )
 
     return {
