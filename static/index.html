@@ -381,6 +381,33 @@
   margin: -10px 0 20px;
 }
 
+.featured-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+}
+
+.featured-loading p {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .featured-anchor-row img {
   width: 56px;
   height: 56px;
@@ -498,6 +525,10 @@
   <div class="featured-section" id="featured-section">
   <h2 class="featured-heading">A Few Matching Sets We Found</h2>
   <p class="featured-subtitle">Generated on Each Page Load — Refresh to See New Recommendations</p>
+    <div class="featured-loading" id="featured-loading" style="display: flex;">
+    <div class="spinner"></div>
+    <p>Finding matching sets…</p>
+    </div>
   <div class="featured-grid" id="featured-list"></div>
   </div>
 
@@ -567,13 +598,18 @@ let currentFeaturedAnchor = null;
 let featuredEntries = [];
 
 async function loadFeatured() {
+  const loadingEl = document.getElementById("featured-loading");
+  const gridEl = document.getElementById("featured-list");
+
+  loadingEl.style.display = "flex";
+  gridEl.innerHTML = "";
+
   try {
     const res = await fetch(`${API_BASE}/discover`);
     const data = await res.json();
     featuredEntries = data.featured;
 
-    const featuredList = document.getElementById("featured-list");
-    featuredList.innerHTML = featuredEntries.map((entry, idx) => `
+    gridEl.innerHTML = featuredEntries.map((entry, idx) => `
       <div class="featured-card" data-idx="${idx}">
         <img src="${entry.anchor.image_url || ''}" alt="${entry.anchor.design_name}">
         <p class="name">${entry.anchor.design_name}</p>
@@ -583,6 +619,9 @@ async function loadFeatured() {
     `).join("");
   } catch (err) {
     console.error("Failed to load featured examples", err);
+    gridEl.innerHTML = `<p style="text-align:center; color: var(--ink-muted);">Could not load featured examples.</p>`;
+  } finally {
+    loadingEl.style.display = "none";
   }
 }
 
