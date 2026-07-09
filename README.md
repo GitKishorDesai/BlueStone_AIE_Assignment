@@ -28,9 +28,12 @@ FastAPI to the frontend.
 1. **One-Time Steps**: fetch product data → normalize fields →
    fill gaps with an LLM where needed → generate image embeddings → index
    everything in a vector DB (Chroma).
-2. **Runtime App** (deployed): given an anchor product, retrieve visually
+2. **Runtime app** (deployed): given an anchor product, retrieve visually
    similar candidates from Chroma → apply hard filters → score on weighted
-   criteria → rank → return top-K with explanations.
+   criteria → rank → return top-K with explanations. The homepage also
+   shows 3 randomly-generated example matching sets on load (via a
+   `/discover` endpoint), so the system is demonstrable without needing
+   to search first.
 
 See [Architecture](#architecture) below for the full flow.
 
@@ -58,9 +61,9 @@ data/
 ```
 
 Only `config.py`, `data_loader.py`, `matching.py`, `api.py`,
-`static/index.html`, and the three `data/` folders above are needed to run
-the deployed app. Everything else is a one-time data-build step, kept in
-the repo for reproducibility.
+`static/index.html`, and `data/products.db` + `data/chroma_db/` are
+needed to run the deployed app. Everything else is a one-time data-build
+step, kept in the repo for reproducibility.
 
 ---
 
@@ -95,7 +98,7 @@ Only needed if you want to regenerate the data (e.g. with a different
 sample size), not required to just run the app.
 
 ```bash
-python sampler.py design_ids.csv --sample-size 100 --id-column design_id
+python sampler.py active_design_ids.csv --sample-size 100 --id-column design_id
 python fetcher.py
 python normalize.py
 python enrich_gender.py        # needs GROQ_API_KEY in a .env file
@@ -112,6 +115,20 @@ python matching.py                          # random anchor if no ID given
 ```
 
 ---
+
+## Data exploration findings
+
+Development and initial design decisions were based on a 96-product
+sample; the full pipeline was later re-run against the complete dataset
+of ~8,185 design IDs, of which 437 (≈5.3%) failed to resolve via the
+Product Details API (confirmed as delisted/unavailable, both via the API
+and manually on BlueStone's own site) — yielding **7,748 valid products**
+in the final catalog.
+
+Field-completeness ratios held consistent between the 96-sample and the
+full 7,748-product run (e.g. missing gender: 13.5% in-sample vs. 12.7% at
+full scale; missing collection: 76% vs. 78.2%), validating that the
+original small sample was representative. Key findings:
 
 ## Matching logic
 
@@ -150,7 +167,7 @@ highest), not LLM-generated — fast, free, reproducible.
   signal, and the reason a vector DB (Chroma) is used for retrieval.
 - **Groq (llama-3.1-8b-instant)** — text-only, used only to fill in gender when
   category + tags + design name give no clear signal. After deriving
-  gender from structured fields first, only ~13/96 records needed this,
+  gender from structured fields first, ~ 1000/7748 records needed this,
   and non-ring categories skip the LLM entirely (defaulted to "women" per
   observed catalog skew) — so the LLM call is a narrow fallback, not a
   bulk step.
@@ -171,15 +188,36 @@ highest), not LLM-generated — fast, free, reproducible.
   Respond with ONLY valid JSON: {"gender": "women", "confidence": "high", "reasoning": "brief reason"}
 ```
 
+## Scaling from 96 to 7,748 products — issues found and fixed
+
+Running the full pipeline at full catalog scale surfaced two real issues
+that the 96-sample was too small to expose:
+
+- **Same-category candidates weren't excluded early enough.** At small
+  scale, Chroma's top-N visual-similarity results often included enough
+  cross-category items by chance. At full scale, visually-similar results
+  for popular categories (e.g. Rings) were dominated entirely by
+  same-category items, causing some queries to return zero
+  recommendations after hard filtering. Fixed by pushing category
+  exclusion directly into the Chroma query itself (via a
+  `canonical_category` metadata field + `$ne` filter), rather than only
+  filtering in Python after retrieval.
+- **New category types not covered by manually-curated config.** The full
+  catalog revealed category labels absent from the 96-sample (e.g.
+  standalone "Chains" and "Mangalsutra" as distinct from "Mangalsutra
+  Chains"), which weren't included in the neck-zone exclusion group,
+  and a "Nose Rings" category that incorrectly canonicalized to the
+  generic "ring" bucket due to a substring match. Both fixed once
+  identified via a full category-distribution scan.
+
+This is a concrete example of why the two-tier sample-then-scale approach
+was useful — these issues would have been much harder to catch and debug
+against the full ~8k catalog directly.
+
 ---
 
 ## Key Assumptions
 
-- Developed against a reproducible 96-product sample (not the full ~8k
-  catalog) due to the timeframe; all code accepts sample size as a
-  parameter and is written to scale without modification.
-- 4 of 100 initially sampled design IDs failed with a transient upstream
-  API error and were excluded.
 - Category-pairing "strength" is not tiered (e.g. necklace+earrings isn't
   scored higher than ring+bracelet) — noted as a future improvement.
 - Non-ring categories with ambiguous gender default to "women", based on
@@ -202,3 +240,4 @@ highest), not LLM-generated — fast, free, reproducible.
   available; outputs were reviewed manually throughout development.
 
 ---
+
