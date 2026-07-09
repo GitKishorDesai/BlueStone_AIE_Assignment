@@ -7,7 +7,7 @@ startup -- no bulk in-memory loading. Exposes:
   GET /recommend             -> anchor + top-K recommendations
   GET /about                 -> models/prompts used, for transparency
 """
-
+import random
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -65,6 +65,24 @@ def recommend(
         },
         "recommendations": recommendations,
     }
+
+@app.get("/discover")
+def discover():
+    sample_ids = random.sample(list(VALID_IDS), 3)
+    featured = []
+    for design_id in sample_ids:
+        anchor_record, recommendations = get_matching_set(design_id, CONN, COLLECTION, top_k=5)
+        featured.append({
+            "anchor": {
+                "design_id": anchor_record["design_id"],
+                "design_name": anchor_record["design_name"],
+                "category_type": anchor_record["category_type"],
+                "image_url": anchor_record["image_url"],
+                "product_page_url": anchor_record["product_page_url"],
+            },
+            "recommendations": recommendations,
+        })
+    return {"featured": featured}
 
 @app.get("/")
 def serve_index():

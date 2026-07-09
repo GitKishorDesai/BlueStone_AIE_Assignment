@@ -236,6 +236,14 @@
     padding: 20px;
   }
 
+  #modal-overlay {
+    z-index: 200;
+  }
+
+  #anchor-modal-overlay {
+    z-index: 200;
+  }
+
   .modal-overlay.open { display: flex; }
 
   .modal {
@@ -343,6 +351,137 @@
     color: var(--ink);
     line-height: 1.5;
   }
+
+  .featured-section {
+  margin-bottom: 48px;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+  overflow: hidden;
+}
+
+.featured-section.hidden {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.featured-heading {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 20px;
+  color: var(--ink);
+}
+
+.featured-subtitle {
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin: -10px 0 20px;
+}
+
+.featured-anchor-row img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f2ede4;
+}
+
+.featured-anchor-row .info .name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.featured-anchor-row .info .cat {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.featured-reco-card:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.featured-reco-card img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #f2ede4;
+}
+
+.featured-reco-card .name {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.featured-reco-card .match-score {
+  font-size: 13px;
+  margin: 0;
+}
+
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.featured-card {
+  background: var(--shaded);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.featured-card:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.featured-card img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  background: #f2ede4;
+}
+
+.featured-card .name {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.featured-card .cat {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+}
+
+.featured-card .cta {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .featured-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -354,6 +493,12 @@
   <div class="search-wrap">
     <input type="text" id="search-input" placeholder="Search by design name or ID..." autocomplete="off">
     <div id="dropdown-list"></div>
+  </div>
+
+  <div class="featured-section" id="featured-section">
+  <h2 class="featured-heading">A Few Matching Sets We Found</h2>
+  <p class="featured-subtitle">Generated on Each Page Load — Refresh to See New Recommendations</p>
+  <div class="featured-grid" id="featured-list"></div>
   </div>
 
   <div class="anchor-card" id="anchor-card">
@@ -398,12 +543,92 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="featured-modal-overlay">
+  <div class="modal" style="max-width: 640px;">
+    <button class="modal-close" id="featured-modal-close" aria-label="Close">&times;</button>
+    <div class="anchor-card visible" id="featured-modal-anchor-block" style="max-width: 100%; border: none; padding: 0 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); cursor:pointer">
+      <img id="featured-modal-anchor-img" src="" alt="">
+      <p class="name" id="featured-modal-anchor-name"></p>
+      <p class="cat" id="featured-modal-anchor-cat"></p>
+    </div>
+    <div class="reco-grid" id="featured-modal-reco-grid"></div>
+  </div>
+</div>
+
 <script>
 const API_BASE = "";  // same origin
 
 let allProducts = [];
 let currentRecommendations = [];
+let currentFeaturedRecommendations = {}; // keyed by a synthetic index for modal lookup
 let currentAnchor = null;
+let currentFeaturedAnchor = null;
+
+let featuredEntries = [];
+
+async function loadFeatured() {
+  try {
+    const res = await fetch(`${API_BASE}/discover`);
+    const data = await res.json();
+    featuredEntries = data.featured;
+
+    const featuredList = document.getElementById("featured-list");
+    featuredList.innerHTML = featuredEntries.map((entry, idx) => `
+      <div class="featured-card" data-idx="${idx}">
+        <img src="${entry.anchor.image_url || ''}" alt="${entry.anchor.design_name}">
+        <p class="name">${entry.anchor.design_name}</p>
+        <p class="cat">${entry.anchor.category_type}</p>
+        <p class="cta">View matching set →</p>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("Failed to load featured examples", err);
+  }
+}
+
+document.getElementById("featured-list").addEventListener("click", (e) => {
+  const card = e.target.closest(".featured-card");
+  if (!card) return;
+  openFeaturedModal(featuredEntries[parseInt(card.dataset.idx)]);
+});
+
+const featuredModalOverlay = document.getElementById("featured-modal-overlay");
+const featuredModalClose = document.getElementById("featured-modal-close");
+
+function openFeaturedModal(entry) {
+  document.getElementById("featured-modal-anchor-img").src = entry.anchor.image_url || "";
+  document.getElementById("featured-modal-anchor-name").textContent = entry.anchor.design_name;
+  document.getElementById("featured-modal-anchor-cat").textContent = entry.anchor.category_type;
+  
+  currentFeaturedAnchor = entry.anchor;
+  currentRecommendations = entry.recommendations;
+
+  const grid = document.getElementById("featured-modal-reco-grid");
+  grid.innerHTML = currentRecommendations.map((item, idx) => {
+    const pct = Math.round(item.match_score * 100);
+    return `
+      <div class="reco-card" data-idx="${idx}">
+        <img src="${item.image_url || ''}" alt="${item.design_name}">
+        <p class="name">${item.design_name}</p>
+        <p class="cat">${item.category_type}</p>
+        <p class="match-score">${pct}% Match</p>
+      </div>
+    `;
+  }).join("");
+
+  featuredModalOverlay.classList.add("open");
+}
+
+document.getElementById("featured-modal-reco-grid").addEventListener("click", (e) => {
+  const card = e.target.closest(".reco-card");
+  if (!card) return;
+  openModal(currentRecommendations[parseInt(card.dataset.idx)]);
+});
+
+featuredModalClose.addEventListener("click", () => featuredModalOverlay.classList.remove("open"));
+featuredModalOverlay.addEventListener("click", (e) => {
+  if (e.target === featuredModalOverlay) featuredModalOverlay.classList.remove("open");
+});
 
 async function init() {
   const res = await fetch(`${API_BASE}/products`);
@@ -418,6 +643,10 @@ searchInput.addEventListener("input", () => {
   if (!q) {
     dropdownList.classList.remove("open");
     dropdownList.innerHTML = "";
+    document.getElementById("featured-section").classList.remove("hidden");
+    anchorCard.classList.remove("visible");
+    recoZone.classList.remove("visible");
+    emptyHint.style.display = "block";
     return;
   }
   const matches = allProducts.filter(p =>
@@ -458,6 +687,9 @@ const recoGrid = document.getElementById("reco-grid");
 const emptyHint = document.getElementById("empty-hint");
 
 async function loadRecommendations(designId) {
+
+  document.getElementById("featured-section").classList.add("hidden");
+
   emptyHint.style.display = "none";
 
   if (recoZone.classList.contains("visible")) {
@@ -508,6 +740,24 @@ recoGrid.addEventListener("click", (e) => {
   openModal(currentRecommendations[idx]);
 });
 
+document.getElementById("featured-list").addEventListener("click", (e) => {
+  const card = e.target.closest(".featured-reco-card");
+  if (!card) return;
+  const blockIdx = parseInt(card.dataset.block);
+  const idx = parseInt(card.dataset.idx);
+  openModal(currentFeaturedRecommendations[blockIdx][idx]);
+});
+
+document.getElementById("featured-modal-anchor-block").addEventListener("click", () => {
+  if (currentFeaturedAnchor) {
+    // Need the anchor's full attribute data (gender, metal, etc.), not just
+    // the slim fields /discover returns -- fetch the full record on demand.
+    fetch(`${API_BASE}/recommend?design_id=${currentFeaturedAnchor.design_id}&top_k=1`)
+      .then(res => res.json())
+      .then(data => openAnchorModal(data.anchor));
+  }
+});
+
 function openModal(item) {
   const pct = Math.round(item.match_score * 100);
 
@@ -547,6 +797,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (modalOverlay.classList.contains("open")) closeModal();
     if (anchorModalOverlay.classList.contains("open")) anchorModalOverlay.classList.remove("open");
+    if (featuredModalOverlay.classList.contains("open")) featuredModalOverlay.classList.remove("open");
   }
 });
 
@@ -590,6 +841,7 @@ anchorModalOverlay.addEventListener("click", (e) => {
 });
 
 init();
+loadFeatured();
 </script>
 
 </body>
