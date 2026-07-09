@@ -17,10 +17,6 @@ import re
 
 import config
 
-NORMALIZED_DIR = os.path.join(config.DATA_DIR, "normalized")
-os.makedirs(NORMALIZED_DIR, exist_ok=True)
-
-
 def clean_price(price_str):
     """Converts '₹ 95,980' style strings into a plain float. Returns None if unparseable."""
     if price_str is None:
@@ -184,6 +180,21 @@ def normalize_record(record):
 
 
 def main():
+    import sqlite3
+
+    conn = sqlite3.connect(os.path.join(config.DATA_DIR, "products.db"))
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            design_id INTEGER PRIMARY KEY,
+            category_type TEXT,
+            design_name TEXT,
+            data TEXT,
+            embedding BLOB
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_category ON products(category_type)")
+
     files = [f for f in os.listdir(config.RAW_DIR) if f.endswith(".json")]
     print(f"[normalize] Found {len(files)} raw record(s) to normalize")
 
@@ -196,16 +207,22 @@ def main():
 
         normalized = normalize_record(record)
 
-        out_path = os.path.join(NORMALIZED_DIR, fname)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(normalized, f, ensure_ascii=False, indent=2)
+        cur.execute(
+            """INSERT OR REPLACE INTO products (design_id, category_type, design_name, data, embedding)
+               VALUES (?, ?, ?, ?, COALESCE((SELECT embedding FROM products WHERE design_id = ?), NULL))""",
+            (normalized["design_id"], normalized["category_type"], normalized["design_name"],
+             json.dumps(normalized, ensure_ascii=False), normalized["design_id"]),
+        )
 
         for field in normalized["missing_fields"]:
             stats_missing[field] = stats_missing.get(field, 0) + 1
 
         processed += 1
 
-    print(f"[normalize] Normalized {processed} record(s) -> {NORMALIZED_DIR}")
+    conn.commit()
+    conn.close()
+
+    print(f"[normalize] Normalized {processed} record(s) -> {os.path.join(config.DATA_DIR, 'products.db')}")
     print("\n[normalize] Missing-field summary (needs fallback/LLM enrichment):")
     for field, count in sorted(stats_missing.items(), key=lambda x: -x[1]):
         print(f"  {field}: {count} / {processed}")

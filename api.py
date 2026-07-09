@@ -1,11 +1,11 @@
 """
 FastAPI backend for the jewellery matching-set UI.
 
-Loads all products + embeddings once at startup, then exposes:
-  GET /products             -> list of {design_id, design_name, category_type} for the dropdown
-  GET /recommend             -> anchor + top-K recommendations for a given design_id
-
-Also serves the static frontend (index.html) at /.
+Connects to SQLite (product records) and Chroma (vector index) once at
+startup -- no bulk in-memory loading. Exposes:
+  GET /products             -> list of {design_id, design_name, category_type}
+  GET /recommend             -> anchor + top-K recommendations
+  GET /about                 -> models/prompts used, for transparency
 """
 
 from fastapi import FastAPI, HTTPException, Query
@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from data_loader import load_all, build_id_index
+from data_loader import load_all, get_product_by_id, list_all_products
 from matching import get_matching_set
 
 app = FastAPI(title="BlueStone Matching Set API")
@@ -25,20 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Loaded once at startup -- not per-request
-PRODUCTS, INDEX, ID_ORDER = load_all()
-PRODUCTS_BY_ID = build_id_index(PRODUCTS)
+CONN, COLLECTION, VALID_IDS = load_all()
+
 
 @app.get("/products")
 def list_products():
-    return [
-        {
-            "design_id": p["design_id"],
-            "design_name": p["design_name"],
-            "category_type": p["category_type"],
-        }
-        for p in PRODUCTS_BY_ID.values()
-    ]
+    return list_all_products(CONN)
 
 
 @app.get("/recommend")
@@ -47,12 +39,12 @@ def recommend(
     top_k: int = Query(5, ge=1, le=20),
     include_same_zone: bool = Query(False),
 ):
-    anchor = PRODUCTS_BY_ID.get(design_id)
+    anchor = get_product_by_id(CONN, design_id)
     if anchor is None:
         raise HTTPException(status_code=404, detail=f"design_id {design_id} not found")
 
     anchor_record, recommendations = get_matching_set(
-        design_id, PRODUCTS_BY_ID, INDEX, top_k=top_k, include_same_zone=include_same_zone
+        design_id, CONN, COLLECTION, top_k=top_k, include_same_zone=include_same_zone
     )
 
     return {
@@ -73,7 +65,6 @@ def recommend(
         },
         "recommendations": recommendations,
     }
-
 
 @app.get("/")
 def serve_index():

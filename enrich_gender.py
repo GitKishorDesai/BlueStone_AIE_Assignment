@@ -1,44 +1,25 @@
 """
-Enriches gender for normalized records where normalize.py marked it 'unknown'.
+Enriches gender for records in SQLite where gender was marked 'unknown'.
 Text-only, using designName + shortDesc + category + tag bag.
-
-Provider-agnostic by design: the actual LLM call is isolated in
-call_llm_groq(). To switch providers later, write a new call_llm_<provider>()
-function with the same signature and point ACTIVE_PROVIDER at it.
 """
 
 import json
 import os
 import re
+import sqlite3
+import time
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from groq import Groq
-from dotenv import load_dotenv
-load_dotenv()  
 
 import config
 
-NORMALIZED_DIR = os.path.join(config.DATA_DIR, "normalized")
+DB_PATH = os.path.join(config.DATA_DIR, "products.db")
 ENRICHMENT_LOG = os.path.join(config.LOG_DIR, "gender_enrichment.json")
-
-# Non-ring categories default to this per catalog convention (BlueStone skews
-# overwhelmingly women's fine jewellery outside of rings) rather than
-# spending an LLM call on near-certain cases.
 NON_RING_DEFAULT_GENDER = "women"
-
-ACTIVE_PROVIDER = "groq"  # swap to "gemini" once that function exists
-
-
-def load_records_needing_gender():
-    records = []
-    for fname in os.listdir(NORMALIZED_DIR):
-        if not fname.endswith(".json"):
-            continue
-        path = os.path.join(NORMALIZED_DIR, fname)
-        with open(path, encoding="utf-8") as f:
-            record = json.load(f)
-        if "gender" in record.get("missing_fields", []):
-            records.append((path, record))
-    return records
+ACTIVE_PROVIDER = "groq"
 
 
 def build_prompt(record):
@@ -76,7 +57,6 @@ def call_llm(prompt):
 
 
 def parse_llm_response(raw_text):
-    """Strips markdown code fences if present, then parses JSON."""
     cleaned = re.sub(r"^```(json)?|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
     try:
         return json.loads(cleaned)
@@ -85,54 +65,58 @@ def parse_llm_response(raw_text):
 
 
 def main():
-    records = load_records_needing_gender()
-    print(f"[enrich_gender] Found {len(records)} record(s) needing gender enrichment")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT design_id, data FROM products")
+    rows = cur.fetchall()
+
+    records_needing_gender = []
+    for design_id, data_str in rows:
+        record = json.loads(data_str)
+        if "gender" in record.get("missing_fields", []):
+            records_needing_gender.append(record)
+
+    print(f"[enrich_gender] Found {len(records_needing_gender)} record(s) needing gender enrichment")
 
     enrichment_log = {}
 
-    for path, record in records:
+    for record in records_needing_gender:
         category = (record.get("category_type") or "").lower()
         is_ring = bool(re.search(r"\bring\b", category))
 
         if not is_ring:
-            # Cheap default, no LLM call needed -- documented assumption
             gender = NON_RING_DEFAULT_GENDER
-            enrichment_log[record["design_id"]] = {
-                "method": "category_default",
-                "gender": gender,
-            }
+            enrichment_log[record["design_id"]] = {"method": "category_default", "gender": gender}
         else:
             prompt = build_prompt(record)
             raw_response = call_llm(prompt)
+            time.sleep(config.LLM_CALL_DELAY_SECONDS)
             parsed = parse_llm_response(raw_response)
 
             if parsed and parsed.get("gender") in ("women", "men", "unisex"):
                 gender = parsed["gender"]
                 enrichment_log[record["design_id"]] = {
-                    "method": "llm",
-                    "gender": gender,
-                    "confidence": parsed.get("confidence"),
-                    "reasoning": parsed.get("reasoning"),
+                    "method": "llm", "gender": gender,
+                    "confidence": parsed.get("confidence"), "reasoning": parsed.get("reasoning"),
                 }
             else:
-                # LLM failed to return usable JSON -- fall back safely rather than crash
                 gender = "unisex"
                 enrichment_log[record["design_id"]] = {
-                    "method": "llm_failed_fallback",
-                    "gender": gender,
-                    "raw_response": raw_response,
+                    "method": "llm_failed_fallback", "gender": gender, "raw_response": raw_response,
                 }
 
-        # Update the record in place
         record["gender"] = gender
         record["missing_fields"] = [f for f in record["missing_fields"] if f != "gender"]
         record["gender_enrichment_method"] = enrichment_log[record["design_id"]]["method"]
 
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(record, f, ensure_ascii=False, indent=2)
+        cur.execute("UPDATE products SET data = ? WHERE design_id = ?",
+                     (json.dumps(record, ensure_ascii=False), record["design_id"]))
 
         print(f"[enrich_gender] designId={record['design_id']} ({record['category_type']}) -> {gender} "
               f"[{enrichment_log[record['design_id']]['method']}]")
+
+    conn.commit()
+    conn.close()
 
     with open(ENRICHMENT_LOG, "w", encoding="utf-8") as f:
         json.dump(enrichment_log, f, ensure_ascii=False, indent=2)

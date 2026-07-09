@@ -1,19 +1,17 @@
 """
 Core matching logic for the jewellery matching-set recommender.
 
-Retrieval now goes through Chroma: the anchor's embedding is used to query
-the vector collection for the top-N most visually similar candidates,
-with is_kids pre-filtered at the Chroma query level (cheap, exact match).
-Category-canonicalization and gender-compatibility hard filters, plus all
-soft-criteria scoring, still run in Python on that shortlist -- this keeps
-the nuanced logic (unisex-as-wildcard, ring/solitaire-ring grouping)
-explicit and readable rather than baked into a query filter language.
+Retrieval goes through Chroma: the anchor's embedding (fetched on-demand,
+not pre-loaded) is used to query the vector collection for the top-N most
+visually similar candidates, with is_kids and category pre-filtered at
+the Chroma query level. Product records are fetched on-demand from
+SQLite -- nothing is bulk-loaded into Python memory.
 """
 
 import numpy as np
 
 import config
-from data_loader import load_all, build_id_index
+from data_loader import load_all, get_product_by_id, get_products_by_ids
 
 WEIGHTS = {
     "visual_similarity": 0.30,
@@ -24,15 +22,11 @@ WEIGHTS = {
     "occasion_match": 0.05,
 }
 
-# How many visually-similar candidates to retrieve from Chroma before
-# applying remaining hard filters + scoring. Larger than final top_k
-# since some retrieved candidates will still be filtered out (same
-# category, gender mismatch) after retrieval.
 RETRIEVAL_POOL_SIZE = 40
 
 
 # ---------------------------------------------------------------------
-# Hard filters (applied to the Chroma-retrieved shortlist)
+# Hard filters
 # ---------------------------------------------------------------------
 
 def is_same_category(anchor, candidate):
@@ -40,14 +34,15 @@ def is_same_category(anchor, candidate):
 
 
 def is_same_zone_group(anchor, candidate):
-    anchor_group = config.get_zone_group(anchor["category_type"])
+    anchor_canonical = config.canonicalize_category(anchor["category_type"])
+    candidate_canonical = config.canonicalize_category(candidate["category_type"])
+    anchor_group = config.get_zone_group(anchor_canonical)
     if anchor_group is None:
         return False
-    return candidate["category_type"] in anchor_group
+    return candidate_canonical in anchor_group
 
 
 def gender_compatible(anchor, candidate):
-    """unisex is compatible with anything; women/men must match exactly."""
     a, c = anchor["gender"], candidate["gender"]
     if a == "unisex" or c == "unisex":
         return True
@@ -55,11 +50,6 @@ def gender_compatible(anchor, candidate):
 
 
 def passes_remaining_filters(anchor, candidate, include_same_zone=False):
-    """
-    is_kids is already filtered at the Chroma query level -- this only
-    re-checks category/zone/gender, which aren't expressed as simple
-    Chroma metadata equality filters.
-    """
     if is_same_category(anchor, candidate):
         return False
     if not include_same_zone and is_same_zone_group(anchor, candidate):
@@ -70,7 +60,7 @@ def passes_remaining_filters(anchor, candidate, include_same_zone=False):
 
 
 # ---------------------------------------------------------------------
-# Soft scoring criteria (each returns a float in [0, 1])
+# Soft scoring criteria
 # ---------------------------------------------------------------------
 
 def score_visual_similarity(anchor, candidate):
@@ -132,7 +122,7 @@ def compute_match_score(anchor, candidate):
 
 
 # ---------------------------------------------------------------------
-# Explanation generation (template-based, deterministic)
+# Explanation generation
 # ---------------------------------------------------------------------
 
 def generate_explanation(anchor, candidate, breakdown):
@@ -169,21 +159,40 @@ def generate_explanation(anchor, candidate, breakdown):
 
 
 # ---------------------------------------------------------------------
-# Main entry point -- retrieval now via Chroma, scoring still in Python
+# Main entry point
 # ---------------------------------------------------------------------
 
-def get_matching_set(anchor_design_id, products_by_id, collection, top_k=5, max_per_category=1, include_same_zone=False):
-    anchor = products_by_id.get(anchor_design_id)
+def get_matching_set(anchor_design_id, conn, collection, top_k=5, max_per_category=1, include_same_zone=False):
+    anchor = get_product_by_id(conn, anchor_design_id)
     if anchor is None:
         raise ValueError(f"design_id {anchor_design_id} not found in loaded products")
 
+    anchor_result = collection.get(ids=[str(anchor_design_id)], include=["embeddings"])
+    anchor["embedding"] = np.array(anchor_result["embeddings"][0])
+
+    anchor_canonical_category = config.canonicalize_category(anchor["category_type"])
     results = collection.query(
         query_embeddings=[anchor["embedding"].tolist()],
-        n_results=min(RETRIEVAL_POOL_SIZE, len(products_by_id)),
-        where={"is_kids": anchor["is_kids"]},
+        n_results=min(RETRIEVAL_POOL_SIZE, len(collection.get(include=[])["ids"])),
+        where={
+            "$and": [
+                {"is_kids": anchor["is_kids"]},
+                {"canonical_category": {"$ne": anchor_canonical_category}},
+            ]
+        },
+        include=["embeddings"],
     )
     retrieved_ids = [int(id_str) for id_str in results["ids"][0]]
-    candidate_pool = [products_by_id[did] for did in retrieved_ids if did != anchor_design_id and did in products_by_id]
+    retrieved_embeddings = {
+        int(id_str): emb for id_str, emb in zip(results["ids"][0], results["embeddings"][0])
+    }
+
+    candidate_records = get_products_by_ids(conn, [did for did in retrieved_ids if did != anchor_design_id])
+
+    candidate_pool = []
+    for did, record in candidate_records.items():
+        record["embedding"] = np.array(retrieved_embeddings[did])
+        candidate_pool.append(record)
 
     candidates = [p for p in candidate_pool if passes_remaining_filters(anchor, p, include_same_zone)]
 
@@ -229,15 +238,14 @@ if __name__ == "__main__":
     parser.add_argument("--include-same-zone", action="store_true")
     args = parser.parse_args()
 
-    products, collection, id_order = load_all()
-    products_by_id = build_id_index(products)
+    conn, collection, valid_ids = load_all()
 
-    test_id = args.design_id if args.design_id is not None else random.choice(products)["design_id"]
+    test_id = args.design_id if args.design_id is not None else random.choice(list(valid_ids))
     if args.design_id is None:
         print(f"[matching] No --design-id given, picked random anchor: {test_id}")
 
     anchor, top_k = get_matching_set(
-        test_id, products_by_id, collection, top_k=args.top_k, include_same_zone=args.include_same_zone
+        test_id, conn, collection, top_k=args.top_k, include_same_zone=args.include_same_zone
     )
 
     print(f"\nAnchor: {anchor['design_name']} (designId={anchor['design_id']}, {anchor['category_type']})\n")

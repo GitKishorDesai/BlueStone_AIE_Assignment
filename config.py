@@ -25,6 +25,7 @@ REQUEST_TIMEOUT_SECONDS = 10
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 2      # multiplied by attempt number
 SLEEP_BETWEEN_REQUESTS = 0.3   # be polite to their API, avoid rate-limit/ban
+LLM_CALL_DELAY_SECONDS = 0.5
 
 # ---- Sampling ----
 DEFAULT_SAMPLE_SIZE = 100
@@ -42,7 +43,7 @@ DEFAULT_HEADERS = {
 # shouldn't default-recommend another neck-worn item as if it were a
 # complementary piece). User can opt in via include_same_zone=True.
 ZONE_GROUPS = [
-    {"Necklaces", "Pendants", "Mangalsutra Chains"},
+    {"necklace", "pendant", "mangalsutra", "chains"},
 ]
 
 # ---- Category canonicalization ----
@@ -51,6 +52,7 @@ ZONE_GROUPS = [
 # as the same category for compatibility/exclusion purposes, while the
 # original detailed label is still kept for display/explanations.
 CATEGORY_KEYWORDS = {
+    "nose_pin": r"\bnose pin(s)?\b|\bnose screw(s)?\b|\bnose ring(s)?\b",
     "ring": r"\bring(s)?\b",
     "earring": r"\bearring(s)?\b",
     "necklace": r"\bnecklace(s)?\b",
@@ -58,7 +60,6 @@ CATEGORY_KEYWORDS = {
     "mangalsutra": r"\bmangalsutra\b",
     "bangle": r"\bbangle(s)?\b",
     "bracelet": r"\bbracelet(s)?\b",
-    "nose_pin": r"\bnose pin(s)?\b|\bnose screw(s)?\b",
 }
 
 

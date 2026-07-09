@@ -1,78 +1,77 @@
 """
-Loads all normalized records + their embeddings into memory, and connects
-to the persistent Chroma vector collection (built by build_vector_index.py)
-for similarity-based retrieval.
-
-Single entry point: load_all(). Downstream scripts (matching logic, UI)
-call this once and work off the returned in-memory structure -- no one
-else re-implements file reading.
+Connects to the SQLite product database and the persistent Chroma vector
+collection. No bulk in-memory loading -- product records are fetched
+on-demand per query, keeping the app's memory footprint independent of
+catalog size.
 """
 
 import json
 import os
+import sqlite3
 
-import numpy as np
 import chromadb
 
 import config
 
-NORMALIZED_DIR = os.path.join(config.DATA_DIR, "normalized")
-EMBEDDINGS_DIR = os.path.join(config.DATA_DIR, "embeddings")
 CHROMA_DIR = os.path.join(config.DATA_DIR, "chroma_db")
+DB_PATH = os.path.join(config.DATA_DIR, "products.db")
 COLLECTION_NAME = "jewellery_products"
 
 
 def load_all():
     """
     Returns:
-        products: list of dicts, each = normalized fields + 'embedding' (np.array)
-        collection: the Chroma collection object, ready for similarity queries
-        id_order: kept for backward compatibility -- list of all design_ids loaded
+        conn: sqlite3 connection for on-demand product lookups
+        collection: Chroma collection for similarity queries
+        valid_ids: set of design_ids present in the Chroma collection
     """
-    products = []
-    skipped_no_embedding = []
-
-    for fname in os.listdir(NORMALIZED_DIR):
-        if not fname.endswith(".json"):
-            continue
-
-        with open(os.path.join(NORMALIZED_DIR, fname), encoding="utf-8") as f:
-            record = json.load(f)
-
-        design_id = record["design_id"]
-        embedding_path = os.path.join(EMBEDDINGS_DIR, f"{design_id}.npy")
-
-        if not os.path.exists(embedding_path):
-            skipped_no_embedding.append(design_id)
-            continue
-
-        embedding = np.load(embedding_path)
-        record["embedding"] = embedding
-        products.append(record)
-
-    if skipped_no_embedding:
-        print(f"[data_loader] Skipped {len(skipped_no_embedding)} product(s) with no embedding: "
-              f"{skipped_no_embedding}")
-
-    if not products:
-        raise RuntimeError("No products with embeddings found -- run the pipeline scripts first.")
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
 
-    id_order = [p["design_id"] for p in products]
+    all_chroma_ids = collection.get(include=[])["ids"]
+    valid_ids = set(int(i) for i in all_chroma_ids)
 
-    print(f"[data_loader] Loaded {len(products)} product(s) into memory; "
-          f"connected to Chroma collection with {collection.count()} vector(s)")
-    return products, collection, id_order
+    print(f"[data_loader] Connected to SQLite ({DB_PATH}) and Chroma "
+          f"({len(valid_ids)} product(s) with embeddings)")
+    return conn, collection, valid_ids
 
 
-def build_id_index(products):
-    """Returns a dict keyed by design_id for O(1) lookup."""
-    return {p["design_id"]: p for p in products}
+def get_product_by_id(conn, design_id):
+    cur = conn.cursor()
+    cur.execute("SELECT data FROM products WHERE design_id = ?", (design_id,))
+    row = cur.fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def get_products_by_ids(conn, design_ids):
+    """Batch fetch -- used for the Chroma-retrieved candidate shortlist."""
+    if not design_ids:
+        return {}
+    cur = conn.cursor()
+    placeholders = ",".join("?" for _ in design_ids)
+    cur.execute(f"SELECT design_id, data FROM products WHERE design_id IN ({placeholders})", design_ids)
+    return {row[0]: json.loads(row[1]) for row in cur.fetchall()}
+
+
+def list_all_products(conn):
+    """Lightweight listing for the UI dropdown -- no JSON parsing needed."""
+    cur = conn.cursor()
+    cur.execute("SELECT design_id, design_name, category_type FROM products")
+    return [
+        {"design_id": row[0], "design_name": row[1], "category_type": row[2]}
+        for row in cur.fetchall()
+    ]
+
+
+def count_products(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM products")
+    return cur.fetchone()[0]
 
 
 if __name__ == "__main__":
-    products, collection, id_order = load_all()
-    print(f"Collection contains {collection.count()} vectors")
-    print(f"Sample product keys: {list(products[0].keys())}")
+    conn, collection, valid_ids = load_all()
+    print(f"Total products in DB: {count_products(conn)}")
+    print(f"Products with embeddings (Chroma): {len(valid_ids)}")

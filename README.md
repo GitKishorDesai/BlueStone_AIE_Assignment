@@ -53,12 +53,8 @@ matching.py                     # runtime: retrieval, filters, scoring, ranking
 api.py                          # runtime: FastAPI app (deployed)
 static/index.html               # runtime: frontend UI
 data/
-    /normalized                 # needed at runtime
-    /embeddings                 # needed at runtime
-    /chroma_db                  # needed at runtime
-    /raw                        # gitignored
-    /images                     # gitignored
-    /logs                       # gitignored
+    /chroma_db                  # Vector Database
+    products.db                 # sqlite3 Database
 ```
 
 Only `config.py`, `data_loader.py`, `matching.py`, `api.py`,
@@ -158,6 +154,22 @@ highest), not LLM-generated — fast, free, reproducible.
   and non-ring categories skip the LLM entirely (defaulted to "women" per
   observed catalog skew) — so the LLM call is a narrow fallback, not a
   bulk step.
+
+  **Prompt used:**
+```
+  You are classifying the target gender for a jewellery product based on its metadata.
+
+  Product details:
+  - Category: {category_type}
+  - Sub-category: {item_category_name}
+  - Design name: {design_name}
+  - Existing tag keywords: {tag_count} tags present
+
+  Classify the target gender as one of: "women", "men", "unisex".
+  If the product name/category gives no clear signal, default to "unisex".
+
+  Respond with ONLY valid JSON: {"gender": "women", "confidence": "high", "reasoning": "brief reason"}
+```
 
 ---
 

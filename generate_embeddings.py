@@ -1,13 +1,10 @@
 """
-Computes a CLIP embedding for each downloaded product image and caches it
-to data/embeddings/{design_id}.npy.
-
-Assumes images already exist locally (see download_images.py). This keeps
-this script's dependencies purely about the model/embedding computation,
-not networking.
+Computes a CLIP embedding for each product's downloaded image and stores
+it directly in SQLite (as raw bytes), rather than separate .npy files.
 """
 
 import os
+import sqlite3
 
 import numpy as np
 import torch
@@ -16,11 +13,8 @@ import open_clip
 
 import config
 
+DB_PATH = os.path.join(config.DATA_DIR, "products.db")
 IMAGES_DIR = os.path.join(config.DATA_DIR, "images")
-EMBEDDINGS_DIR = os.path.join(config.DATA_DIR, "embeddings")
-FAILED_LOG = os.path.join(config.LOG_DIR, "embedding_failures.txt")
-
-os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
 
 MODEL_NAME = "ViT-B-32"
 PRETRAINED = "openai"
@@ -43,49 +37,51 @@ def compute_embedding(model, preprocess, image_path):
     image_input = preprocess(image).unsqueeze(0)
     with torch.no_grad():
         embedding = model.encode_image(image_input)
-        embedding = embedding / embedding.norm(dim=-1, keepdim=True)  # normalize for cosine similarity
+        embedding = embedding / embedding.norm(dim=-1, keepdim=True)
 
     return embedding.squeeze(0).numpy()
 
 
 def main():
-    image_files = [f for f in os.listdir(IMAGES_DIR) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
-    print(f"[embeddings] Found {len(image_files)} image(s) in {IMAGES_DIR}")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT design_id FROM products WHERE embedding IS NULL")
+    design_ids = [row[0] for row in cur.fetchall()]
+
+    print(f"[embeddings] Found {len(design_ids)} product(s) needing an embedding")
 
     model, preprocess = load_model()
 
     processed = 0
-    skipped_existing = 0
     failed = []
 
-    for fname in image_files:
-        design_id = os.path.splitext(fname)[0]
-        embedding_path = os.path.join(EMBEDDINGS_DIR, f"{design_id}.npy")
-
-        if os.path.exists(embedding_path):
-            skipped_existing += 1
+    for design_id in design_ids:
+        image_path = os.path.join(IMAGES_DIR, f"{design_id}.jpg")
+        if not os.path.exists(image_path):
+            failed.append((design_id, "image_not_found"))
             continue
 
-        image_path = os.path.join(IMAGES_DIR, fname)
         embedding = compute_embedding(model, preprocess, image_path)
-
         if embedding is None:
-            failed.append(design_id)
+            failed.append((design_id, "embedding_computation_failed"))
             continue
 
-        np.save(embedding_path, embedding)
+        cur.execute("UPDATE products SET embedding = ? WHERE design_id = ?",
+                     (embedding.astype(np.float32).tobytes(), design_id))
         processed += 1
-        print(f"[embeddings] ({processed}) designId={design_id}: embedding saved")
+        if processed % 200 == 0:
+            conn.commit()
+            print(f"[embeddings] ({processed}/{len(design_ids)}) checkpoint saved")
+
+    conn.commit()
+    conn.close()
 
     if failed:
-        with open(FAILED_LOG, "w") as f:
-            for design_id in failed:
-                f.write(f"{design_id}\n")
+        with open(os.path.join(config.LOG_DIR, "embedding_failures.txt"), "w") as f:
+            for design_id, reason in failed:
+                f.write(f"{design_id},{reason}\n")
 
-    print(f"\n[embeddings] Done. {processed} new embedding(s) computed, "
-          f"{skipped_existing} already existed, {len(failed)} failed.")
-    if failed:
-        print(f"[embeddings] See {FAILED_LOG} for failure details.")
+    print(f"\n[embeddings] Done. {processed} embedding(s) computed, {len(failed)} failed.")
 
 
 if __name__ == "__main__":
