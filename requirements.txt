@@ -3,3 +3,4 @@ uvicorn[standard]
 numpy
 python-dotenv
 chromadb
+groq
