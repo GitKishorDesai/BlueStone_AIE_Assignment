@@ -594,6 +594,24 @@
   flex-shrink: 0;
 }
 
+.eval-buyer-summary {
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+  margin: 0 0 14px;
+  padding: 0 12px;
+}
+.eval-weakest {
+  background: var(--shaded);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
 
 </style>
 </head>
@@ -810,11 +828,19 @@ function renderEvaluation(e) {
     ["Overall Quality", e.overall_quality],
   ];
   const verdictTitle = e.overall_verdict.replace(/\b\w/g, c => c.toUpperCase());
+  const weakestHtml = e.weakest_item && e.weakest_item !== "null"
+    ? `<div class="eval-weakest"><strong>Consider optional:</strong> ${e.weakest_item} — ${e.weakest_item_reason}</div>`
+    : "";
+  const summaryHtml = e.buyer_summary
+    ? `<p class="eval-buyer-summary">${e.buyer_summary}</p>`
+    : "";
+
   return `
     <div class="eval-panel">
       <button class="eval-close" aria-label="Close evaluation">&times;</button>
       <p class="eval-verdict">${verdictTitle}</p>
-      <p class="eval-verdict-reason">${e.overall_reasoning}</p>
+      ${summaryHtml}
+      ${weakestHtml}
       ${dims.map(([label, d]) => `
         <div class="eval-dim">
           <div>

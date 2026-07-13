@@ -17,6 +17,7 @@ import os
 import json
 import re
 from groq import Groq
+from google import genai as google_genai
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -150,8 +151,100 @@ def build_evaluation_prompt(anchor, recommendations):
         "overall_reasoning": "..."
         }}"""
 
+def build_multimodal_prompt(anchor, recommendations):
+    def summarize(item):
+        return (
+            f"- {item['design_name']} ({item['category_type']}): "
+            f"{item.get('metal_color', 'unknown')} {item.get('metal_type', 'unknown')}, "
+            f"gemstone: {item.get('gemstone_kind') or 'unknown'}, "
+            f"price: ₹{item.get('price', 'unknown')}, "
+            f"occasions: {', '.join(item.get('occasions') or []) or 'none listed'}"
+        )
 
-from data_loader import get_products_by_ids
+    anchor_summary = summarize(anchor)
+    recs_summary = "\n".join(summarize(r) for r in recommendations)
+
+    return f"""You are an expert jewellery stylist helping a customer decide whether a
+        recommended set of jewellery pieces is worth buying together as a matching set.
+        You are shown the actual product images below, in this order: first the anchor
+        piece the customer is already interested in, then each recommended piece.
+
+        Anchor product attributes:
+        {anchor_summary}
+
+        Recommended set attributes:
+        {recs_summary}
+
+        Look at the images and reason using both what you see and the attributes above.
+        Do not invent details not visible in the images or listed above.
+
+        Write for the customer directly, in a warm, confident, concise tone —
+        2-3 sentences maximum, no jewellery-analyst jargon, no bullet lists in the summary text.
+
+        Also identify the single weakest-fitting item in the set, if any (there may be
+        none, in which case say so) — name it explicitly and explain briefly why a
+        customer might want to treat it as optional rather than essential.
+
+        Score four dimensions 1-10 based on what you see in the images plus the
+        attributes: metal_finish, gemstone_color, style_occasion, overall_quality.
+
+        Give an overall_verdict: one of "strong match", "acceptable match", "weak match".
+
+        Respond with ONLY valid JSON, no other text, in exactly this schema:
+        {{
+        "buyer_summary": "...",
+        "weakest_item": "design name, or null if none",
+        "weakest_item_reason": "... or null",
+        "metal_finish": {{"score": 8, "reasoning": "..."}},
+        "gemstone_color": {{"score": 7, "reasoning": "..."}},
+        "style_occasion": {{"score": 9, "reasoning": "..."}},
+        "overall_quality": {{"score": 8, "reasoning": "..."}},
+        "overall_verdict": "strong match"
+        }}"""
+
+def run_multimodal_evaluation(conn, anchor, recommendations):
+    full_records = get_products_by_ids(conn, [r["design_id"] for r in recommendations])
+
+    enriched_recommendations = []
+    for rec in recommendations:
+        full = full_records.get(rec["design_id"], {})
+        enriched_recommendations.append({
+            **rec,
+            "metal_type": full.get("metal_type"),
+            "metal_color": full.get("metal_color"),
+            "gemstone_kind": full.get("gemstone_info", {}).get("kind"),
+            "price": full.get("price"),
+            "occasions": full.get("occasions"),
+        })
+
+    prompt = build_multimodal_prompt(anchor, enriched_recommendations)
+
+    # Build the input list: prompt text first, then one image entry per
+    # product (anchor first, then each recommendation), passed directly
+    # by public URL -- no download/base64 step needed.
+    input_items = [{"type": "text", "text": prompt}]
+    for item in [anchor] + enriched_recommendations:
+        image_url = item.get("image_url")
+        if image_url:
+            input_items.append({
+                "type": "image",
+                "uri": image_url,
+                "mime_type": "image/jpeg",
+            })
+
+    client = google_genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    interaction = client.interactions.create(
+        model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"),
+        input=input_items,
+    )
+
+    raw = interaction.output_text
+    cleaned = re.sub(r"^```(json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        return None
 
 def run_evaluation(conn, anchor, recommendations):
     """Shared by /evaluate and /discover. Returns parsed evaluation dict or None on failure."""
@@ -186,7 +279,6 @@ def run_evaluation(conn, anchor, recommendations):
     except json.JSONDecodeError:
         return None
 
-
 @app.get("/evaluate")
 def evaluate(design_id: int = Query(...), top_k: int = Query(5)):
     anchor = get_product_by_id(CONN, design_id)
@@ -194,12 +286,12 @@ def evaluate(design_id: int = Query(...), top_k: int = Query(5)):
         raise HTTPException(status_code=404, detail=f"design_id {design_id} not found")
 
     anchor_record, recommendations = get_matching_set(design_id, CONN, COLLECTION, top_k=top_k)
-    evaluation = run_evaluation(CONN,anchor_record, recommendations)
+    evaluation = run_multimodal_evaluation(CONN, anchor_record, recommendations)
 
     if evaluation is None:
         raise HTTPException(status_code=502, detail="LLM returned an unparseable evaluation")
 
-    return {"evaluation": evaluation}    
+    return {"evaluation": evaluation}  
 
 @app.get("/")
 def serve_index():
