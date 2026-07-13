@@ -34,6 +34,17 @@ FastAPI to the frontend.
    shows 3 randomly-generated example matching sets on load (via a
    `/discover` endpoint), so the system is demonstrable without needing
    to search first.
+3. **AI evaluation (on-demand)**: after a matching set is generated, the
+user can trigger a second, independent AI evaluation of that set — a
+multimodal call (Gemini 3.5 Flash) that looks at the actual product
+images plus structured attributes and gives a buyer-facing verdict,
+dimension scores, and a "weakest link" callout. This is a qualitative
+second opinion on the algorithm's own output, not part of the
+recommendation logic itself. Gated behind a button on search results
+(to avoid unnecessary LLM cost on every query); auto-run on the 3
+featured homepage examples using a cheaper text-only version, since
+those are bounded in number and meant to showcase the feature by
+default.
 
 See [Architecture](#architecture) below for the full flow.
 
@@ -171,6 +182,16 @@ highest), not LLM-generated — fast, free, reproducible.
   and non-ring categories skip the LLM entirely (defaulted to "women" per
   observed catalog skew) — so the LLM call is a narrow fallback, not a
   bulk step.
+  - **Gemini (`gemini-3.5-flash`), multimodal** — used only for the
+  on-demand "Evaluate this set with AI" feature. Given the anchor
+  product's image + attributes and each recommended item's image +
+  attributes, it produces a buyer-facing verdict (strong/acceptable/weak
+  match), scores four dimensions (metal & finish, gemstone & color,
+  style & occasion, overall quality), and explicitly names the single
+  weakest-fitting item in the set, if any. Images are passed directly by
+  public URL (no download/base64 step needed) via the Gemini Interactions
+  API's multi-image input support.
+
 
   **Prompt used:**
 ```
@@ -187,6 +208,60 @@ highest), not LLM-generated — fast, free, reproducible.
 
   Respond with ONLY valid JSON: {"gender": "women", "confidence": "high", "reasoning": "brief reason"}
 ```
+
+```
+You are an expert jewellery stylist helping a customer decide whether a
+recommended set of jewellery pieces is worth buying together as a matching set. 
+
+You are shown the actual product images below, in this order: first the anchor
+piece the customer is already interested in, then each recommended piece.  
+
+Anchor product attributes:
+{anchor_summary}  
+Recommended set attributes:
+{recs_summary}  
+
+Look at the images and reason using both what you see and the attributes above.
+Do not invent details not visible in the images or listed above.  
+
+Write for the customer directly, in a warm, confident, concise tone —
+2-3 sentences maximum, no jewellery-analyst jargon, no bullet lists in the summary text.  
+Also identify the single weakest-fitting item in the set, if any (there may be
+none, in which case say so) — name it explicitly and explain briefly why a
+customer might want to treat it as optional rather than essential.  
+
+Score four dimensions 1-10 based on what you see in the images plus the
+attributes: metal_finish, gemstone_color, style_occasion, overall_quality.  
+
+Give an overall_verdict: one of "strong match", "acceptable match", "weak match".
+
+Respond with ONLY valid JSON, no other text, in exactly this schema:  
+  {"buyer_summary": "...",
+  "weakest_item": "...",
+  "weakest_item_reason": "...",
+  "metal_finish": {"score": 8, "reasoning": "..."},
+  "gemstone_color": {...},
+  "style_occasion": {...},
+  "overall_quality": {...},
+  "overall_verdict": "strong match"}
+```
+
+## Evaluation Feature — Design Notes
+
+The AI-evaluation feature is intentionally split into two tiers:
+
+- **Featured homepage examples** (auto-run, 3 per page load): text-only,
+  Groq — cheap and fast, since this runs unconditionally on every visit.
+- **User-triggered search evaluation** (button click): multimodal, Gemini
+  — richer and slower, since it only runs when a person deliberately asks
+  for it, and 6 images per call (anchor + up to 5 recommendations) is
+  meaningfully heavier than a text-only call.
+
+This evaluation layer is independent of the matching algorithm itself —
+it's a second, qualitative opinion on an already-generated set, not part
+of how the set is chosen. It can flag issues the deterministic scoring
+missed (or vice versa disagree with it), which is the point: two
+different reasoning approaches checking the same output.
 
 ## Scaling from 96 to 7,748 products — issues found and fixed
 
@@ -238,6 +313,8 @@ against the full ~8k catalog directly.
   explanations more concrete.
 - No automated recommendation-quality metric exists — no ground truth was
   available; outputs were reviewed manually throughout development.
-
+- The AI evaluation feature's two tiers (text-only vs. multimodal) use
+  different prompts/schemas by design; a future version could unify them
+  behind one schema with an optional "images available" flag.
 ---
 
