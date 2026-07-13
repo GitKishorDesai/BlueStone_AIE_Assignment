@@ -509,6 +509,92 @@
 @media (max-width: 700px) {
   .featured-grid { grid-template-columns: 1fr; }
 }
+
+.evaluate-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.evaluate-btn:hover { opacity: 0.9; }
+.evaluate-btn:disabled { opacity: 0.5; cursor: default; }
+
+.eval-panel {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 8px;
+}
+
+.eval-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eval-close:hover { background: var(--shaded); color: var(--ink); }
+
+.eval-verdict {
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 6px;
+}
+.eval-verdict-reason {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+  padding: 0 20px;
+}
+.eval-dim {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.eval-dim:last-child { border-bottom: none; }
+.eval-dim-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.eval-dim-reason {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.eval-dim-score {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+
 </style>
 </head>
 <body>
@@ -541,6 +627,10 @@
   <div class="reco-zone" id="reco-zone">
     <h2>Recommended Matching Set</h2>
     <div class="reco-grid" id="reco-grid"></div>
+    <div style="text-align:center; margin-bottom: 20px;">
+      <button id="evaluate-btn" class="evaluate-btn">Evaluate this set with AI</button>
+    </div>
+    <div id="evaluation-result"></div>
   </div>
 
   <p class="empty-hint" id="empty-hint">Select a Product above to see its Matching Set</p>
@@ -583,6 +673,11 @@
       <p class="cat" id="featured-modal-anchor-cat"></p>
     </div>
     <div class="reco-grid" id="featured-modal-reco-grid"></div>
+    <h3 style="font-family: var(--font-serif); font-size: 16px; text-align: center; margin: 20px 0 12px;">AI Evaluation</h3>
+    <div id="featured-modal-eval"></div>
+    <div style="text-align:center;">
+    <button id="featured-eval-reshow-btn" class="evaluate-btn" style="display:none;">Show AI Evaluation</button>
+</div>
   </div>
 </div>
 
@@ -593,7 +688,10 @@ let allProducts = [];
 let currentRecommendations = [];
 let currentFeaturedRecommendations = {}; // keyed by a synthetic index for modal lookup
 let currentAnchor = null;
+let currentAnchorId = null;
 let currentFeaturedAnchor = null;
+let currentFeaturedEvaluation = null;
+let currentSearchEvaluation = null;
 
 let featuredEntries = [];
 
@@ -631,6 +729,40 @@ document.getElementById("featured-list").addEventListener("click", (e) => {
   openFeaturedModal(featuredEntries[parseInt(card.dataset.idx)]);
 });
 
+document.getElementById("featured-eval-reshow-btn").addEventListener("click", () => {
+  if (currentFeaturedEvaluation) {
+    document.getElementById("featured-modal-eval").innerHTML = renderEvaluation(currentFeaturedEvaluation);
+    document.getElementById("featured-eval-reshow-btn").style.display = "none";
+  }
+});
+
+document.getElementById("evaluate-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("evaluate-btn");
+  const resultEl = document.getElementById("evaluation-result");
+
+  if (currentSearchEvaluation) {
+    resultEl.innerHTML = renderEvaluation(currentSearchEvaluation);
+    btn.style.display = "none";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Evaluating…";
+  resultEl.innerHTML = "";
+
+  try {
+    const res = await fetch(`${API_BASE}/evaluate?design_id=${currentAnchorId}`);
+    const data = await res.json();
+    currentSearchEvaluation = data.evaluation;
+    resultEl.innerHTML = renderEvaluation(currentSearchEvaluation);
+    btn.style.display = "none";
+  } catch (err) {
+    resultEl.innerHTML = `<p style="text-align:center; color: var(--ink-muted);">Evaluation failed. Try again.</p>`;
+    btn.disabled = false;
+    btn.textContent = "Evaluate this set with AI";
+  }
+});
+
 const featuredModalOverlay = document.getElementById("featured-modal-overlay");
 const featuredModalClose = document.getElementById("featured-modal-close");
 
@@ -638,8 +770,8 @@ function openFeaturedModal(entry) {
   document.getElementById("featured-modal-anchor-img").src = entry.anchor.image_url || "";
   document.getElementById("featured-modal-anchor-name").textContent = entry.anchor.design_name;
   document.getElementById("featured-modal-anchor-cat").textContent = entry.anchor.category_type;
-  
   currentFeaturedAnchor = entry.anchor;
+
   currentRecommendations = entry.recommendations;
 
   const grid = document.getElementById("featured-modal-reco-grid");
@@ -655,7 +787,45 @@ function openFeaturedModal(entry) {
     `;
   }).join("");
 
+  currentFeaturedEvaluation = entry.evaluation;
+  const evalContainer = document.getElementById("featured-modal-eval");
+  const reshowBtn = document.getElementById("featured-eval-reshow-btn");
+
+  if (entry.evaluation) {
+    evalContainer.innerHTML = renderEvaluation(entry.evaluation);
+    reshowBtn.style.display = "none";
+  } else {
+    evalContainer.innerHTML = `<p style="text-align:center; color: var(--ink-muted); font-size: 13px;">AI evaluation unavailable.</p>`;
+    reshowBtn.style.display = "none";
+  }
+
   featuredModalOverlay.classList.add("open");
+}
+
+function renderEvaluation(e) {
+  const dims = [
+    ["Metal & Finish", e.metal_finish],
+    ["Gemstone & Color", e.gemstone_color],
+    ["Style & Occasion", e.style_occasion],
+    ["Overall Quality", e.overall_quality],
+  ];
+  const verdictTitle = e.overall_verdict.replace(/\b\w/g, c => c.toUpperCase());
+  return `
+    <div class="eval-panel">
+      <button class="eval-close" aria-label="Close evaluation">&times;</button>
+      <p class="eval-verdict">${verdictTitle}</p>
+      <p class="eval-verdict-reason">${e.overall_reasoning}</p>
+      ${dims.map(([label, d]) => `
+        <div class="eval-dim">
+          <div>
+            <div class="eval-dim-label">${label}</div>
+            <div class="eval-dim-reason">${d.reasoning}</div>
+          </div>
+          <div class="eval-dim-score">${d.score}/10</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 document.getElementById("featured-modal-reco-grid").addEventListener("click", (e) => {
@@ -667,6 +837,26 @@ document.getElementById("featured-modal-reco-grid").addEventListener("click", (e
 featuredModalClose.addEventListener("click", () => featuredModalOverlay.classList.remove("open"));
 featuredModalOverlay.addEventListener("click", (e) => {
   if (e.target === featuredModalOverlay) featuredModalOverlay.classList.remove("open");
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".eval-close")) return;
+
+  const panel = e.target.closest(".eval-panel");
+  const isSearchPanel = panel.closest("#evaluation-result") !== null;
+  const isFeaturedPanel = panel.closest("#featured-modal-eval") !== null;
+
+  panel.remove();
+
+  if (isSearchPanel) {
+    const btn = document.getElementById("evaluate-btn");
+    btn.style.display = "inline-block";
+    btn.disabled = false;
+    btn.textContent = "Evaluate this set with AI";
+  }
+  if (isFeaturedPanel) {
+    document.getElementById("featured-eval-reshow-btn").style.display = "inline-block";
+  }
 });
 
 async function init() {
@@ -726,6 +916,17 @@ const recoGrid = document.getElementById("reco-grid");
 const emptyHint = document.getElementById("empty-hint");
 
 async function loadRecommendations(designId) {
+
+  document.getElementById("featured-section").classList.add("hidden");
+  document.getElementById("evaluation-result").innerHTML = "";
+  document.getElementById("evaluate-btn").style.display = "inline-block";
+  document.getElementById("evaluate-btn").disabled = false;
+  document.getElementById("evaluate-btn").textContent = "Evaluate this set with AI";
+  currentSearchEvaluation = null;
+
+  emptyHint.style.display = "none";
+
+  currentAnchorId = designId;
 
   document.getElementById("featured-section").classList.add("hidden");
 
