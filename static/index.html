@@ -612,6 +612,20 @@
   line-height: 1.5;
 }
 
+.eval-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+}
+
+.eval-loading p {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
 
 </style>
 </head>
@@ -765,8 +779,12 @@ document.getElementById("evaluate-btn").addEventListener("click", async () => {
   }
 
   btn.disabled = true;
-  btn.textContent = "Evaluating…";
-  resultEl.innerHTML = "";
+  resultEl.innerHTML = `
+    <div class="eval-loading">
+      <div class="spinner"></div>
+      <p>Analyzing images and details — this can take a few seconds…</p>
+    </div>
+  `;
 
   try {
     const res = await fetch(`${API_BASE}/evaluate?design_id=${currentAnchorId}`);
@@ -777,7 +795,6 @@ document.getElementById("evaluate-btn").addEventListener("click", async () => {
   } catch (err) {
     resultEl.innerHTML = `<p style="text-align:center; color: var(--ink-muted);">Evaluation failed. Try again.</p>`;
     btn.disabled = false;
-    btn.textContent = "Evaluate this set with AI";
   }
 });
 
